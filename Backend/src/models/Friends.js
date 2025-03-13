@@ -2,9 +2,9 @@ import { pool } from "../index.js";
 
 const Friends = async () => {
     const query = `CREATE TABLE IF NOT EXISTS friends (
-    id BINARY(16) PRIMARY KEY,
-    user_id BINARY(16) NOT NULL,
-    friend_id BINARY(16) NOT NULL,
+    id VARCHAR(255) PRIMARY KEY,
+    user_id VARCHAR(255) NOT NULL,
+    friend_id VARCHAR(255) NOT NULL,
     status ENUM('pending','accepted','rejected') DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_user_id FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,

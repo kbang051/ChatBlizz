@@ -2,12 +2,12 @@ import { pool } from "../index.js";
 
 const Messages = async () => {
   const query = `CREATE TABLE IF NOT EXISTS messages (
-        id BINARY(16) PRIMARY KEY,
-        sender_id BINARY(16) NOT NULL,
-        receiver_id BINARY(16) NULL,
-        group_id BINARY(16) NULL,
+        id VARCHAR(255) PRIMARY KEY,
+        sender_id VARCHAR(255) NOT NULL,
+        receiver_id VARCHAR(255) NULL,
+        group_id VARCHAR(255) NULL,
         message TEXT,
-        file_id BINARY(16),
+        file_id VARCHAR(255),
         message_type ENUM('text','image','file'),
         is_read BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

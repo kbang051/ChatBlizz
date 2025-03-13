@@ -24,8 +24,8 @@ const userRegistration = async (req, res) => {
             return res.status(400).json({message: `Email ${email} already exists in the database`})
         }
         
-        const queryOperation = "INSERT INTO `users` (`username`, `email`, `fireBaseID`, `id`) VALUES (?, ?, ?, UUID_TO_BIN(UUID()))"
-        const [query] = await pool.query(queryOperation, [username.trim(), email.trim(), fireBaseID.trim()])
+        const queryOperation = "INSERT INTO `users` (`username`, `email`, `fireBaseID`, `id`) VALUES (?, ?, ?, ?)"
+        const [query] = await pool.query(queryOperation, [username.trim(), email.trim(), fireBaseID.trim(), fireBaseID.trim()])
         if (query.affectedRows > 0) {
             console.log("User successfully inserted!");
             return res.status(200).json({ message: "User registered successfully", userId: query.insertId });

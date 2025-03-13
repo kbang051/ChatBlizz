@@ -3,7 +3,7 @@ import ApiResponse from "../utils/ApiResponse.js";
 
 const saveMessage = async (sender_id, receiver_id, content) => {
   const query = `INSERT INTO messages 
-                 (UUID_TO_BIN(UUID()), sender_id, receiver_id, message)
+                 (UUID(), sender_id, receiver_id, message)
                  VALUES (?, ?, ?)`;
   try {
     const [insertMessage] = await pool.query(query, [sender_id, receiver_id, content]);
@@ -15,7 +15,7 @@ const saveMessage = async (sender_id, receiver_id, content) => {
 };
 
 const getAllUsers = async (req, res) => { 
-  const query = `SELECT BIN_TO_UUID(id) AS id, username, email FROM users`;
+  const query = `SELECT id, username, email FROM users`;
   try {
     const [getRecords] = await pool.query(query);
     if (getRecords.length > 0)
@@ -32,7 +32,7 @@ const fetchSearchResults = async (req, res) => {
   console.log("Request received to fetch search result")
   const q = decodeURIComponent(req.params?.q); //search param
   console.log ("Request Parameter: ", q)
-  const query = `SELECT BIN_TO_UUID(id) AS id, username, email FROM users WHERE LOWER(username) LIKE LOWER(?) LIMIT 6`;
+  const query = `SELECT id, username, email FROM users WHERE LOWER(username) LIKE LOWER(?) LIMIT 6`;
   try {
     const [getProfiles] = await pool.query( query, [`%${q}%`] );
     if (getProfiles.length > 0)
@@ -42,6 +42,41 @@ const fetchSearchResults = async (req, res) => {
     return res.status(200).send(getProfiles);
   } catch (error) {
     console.log("Error while fetching profiles from the backend:", error)
+  }
+}
+
+//detail of a particular user
+const getUserDetail = async (req, res) => {
+  console.log("Request received to fetch user info")
+  const query1 = `SELECT id, username, email, avatar, created_at FROM users WHERE id = ? LIMIT 1`
+  const query2 = `SELECT status FROM friends WHERE user_id = ? AND friend_id = ? LIMIT 1`
+  try {
+    const user_id   = decodeURIComponent(req.params?.userId) 
+    const friend_id = decodeURIComponent(req.params?.friendId) 
+    if (!user_id || user_id.trim().length === 0) {
+      console.log("Empty user_id:", user_id);
+      return res.status(400).json({ message: "Empty user_id" });
+    }
+    if (!friend_id || friend_id.trim().length === 0) {
+      console.log("Empty friend_id:", friend_id);
+      return res.status(400).json({ message: "Empty friend_id" });
+    }
+
+    const [[userTableResponse], [friendsTableResponse]] = await Promise.all([ //destructuring to remove meta data
+      pool.query(query1, [friend_id]),
+      pool.query(query2, [user_id, friend_id]),
+    ])
+  
+    const user = userTableResponse[0]
+    if (friendsTableResponse.length === 0 || friendsTableResponse[0].status === "pending" || friendsTableResponse[0].status === "rejected")
+      user.friendStatus = false 
+    else 
+      user.friendStatus = true
+
+    return res.status(200).send(user)
+  } catch (error) {
+    console.error("Failed to get user detail from the backend: ", error)
+    return res.status(500).json({ message: "Failed to get user detail from the backend" })
   }
 }
 
@@ -57,7 +92,7 @@ const sendFriendRequest = async (req, res) => {
     return res.status(400).json({ message: "Empty friend_id" });
   }
 
-  const checkQuery = `SELECT * FROM friends WHERE user_id = UUID_TO_BIN(?) AND friend_id = UUID_TO_BIN(?) LIMIT 1`;
+  const checkQuery = `SELECT * FROM friends WHERE user_id = ? AND friend_id = ? LIMIT 1`;
 
   try {
     const [existingRecord] = await pool.query(checkQuery, [user_id, friend_id]);
@@ -66,7 +101,7 @@ const sendFriendRequest = async (req, res) => {
       return res.status(400).json({ message: "Friendship already exists" });
     }
 
-    const insertQuery = `INSERT INTO friends (id, user_id, friend_id, status) VALUES (UUID_TO_BIN(UUID()), UUID_TO_BIN(?), UUID_TO_BIN(?), "pending")`;
+    const insertQuery = `INSERT INTO friends (id, user_id, friend_id, status) VALUES (UUID(), ?, ?, "pending")`;
     const [result] = await pool.query(insertQuery, [user_id, friend_id]);
 
     if (result.affectedRows > 0) {
@@ -94,8 +129,8 @@ const acceptFriendRequest = async (req, res) => {
     console.log("Empty friend_id:", friend_id);
     return res.status(400).json({ message: "Empty friend_id" });
   }
-  const query = `UPDATE friends SET status = "accepted" WHERE (user_id = UUID_TO_BIN(?) AND friend_id = UUID_TO_BIN(?)) 
-                 OR (user_id = UUID_TO_BIN(?) AND friend_id = UUID_TO_BIN(?))`;  
+  const query = `UPDATE friends SET status = "accepted" WHERE (user_id = ? AND friend_id = ?) 
+                 OR (user_id = ? AND friend_id = ?)`;  
   try {
     const [result] = await pool.query(query, [user_id, friend_id, friend_id, user_id])
     if (result.affectedRows > 0) {
@@ -111,7 +146,7 @@ const acceptFriendRequest = async (req, res) => {
   }
 }
 
-export { saveMessage, getAllUsers, fetchSearchResults, sendFriendRequest, acceptFriendRequest };
+export { saveMessage, getAllUsers, fetchSearchResults, getUserDetail, sendFriendRequest, acceptFriendRequest };
 
 
 // {

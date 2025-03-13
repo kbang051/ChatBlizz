@@ -2,8 +2,8 @@ import { pool } from "../index.js";
 
 const File = async () => {
   const query = `CREATE TABLE IF NOT EXISTS file (
-        id BINARY(16) PRIMARY KEY,
-        user_id BINARY(16) NOT NULL,
+        id VARCHAR(255) PRIMARY KEY,
+        user_id VARCHAR(255) NOT NULL,
         file_name VARCHAR(255) NOT NULL,
         file_url VARCHAR(255) NOT NULL,
         file_type ENUM('image','video','document'),
