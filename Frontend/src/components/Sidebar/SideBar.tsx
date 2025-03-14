@@ -14,19 +14,20 @@ interface userSearchInfo {
     email: string,
     avatar: string,
     created_at: string,
-    friendStatus: boolean 
+    friendStatus: string  
 }
 
 const SideBar: React.FC = () => {
   const location = useLocation()
   const navigate = useNavigate()
-  const [users, setUsers] = useState<User[]>([]);
-  const [userSearchInfo, setUserSearchInfo] = useState<userSearchInfo>()
+  const [users, setUsers] = useState<User[]>([]); // could be sent from parent
+  const [userSearchInfo, setUserSearchInfo] = useState<userSearchInfo>() // could be sent from parent
   
   const queryParams = new URLSearchParams(location.search)
   const searchId = queryParams.get("searchId")
   const username = queryParams.get("username")
   const email = queryParams.get("email")
+  const [renderFetchUserDetail, setRenderFetchUserDetail] = useState(0)
 
   useEffect(() => {
     const getAllUsers = async () => {
@@ -41,10 +42,6 @@ const SideBar: React.FC = () => {
     };
     getAllUsers();
   }, []);
-
-  useEffect(() => {
-    console.log("User data", users);
-  }, [users]);
 
   // This effect runs when URL parameters change
   useEffect(() => {
@@ -66,10 +63,10 @@ const SideBar: React.FC = () => {
         setUserSearchInfo(undefined);
       }
     };
-
     fetchUserDetails();
-  }, [searchId]); 
+  }, [searchId, renderFetchUserDetail]);  //renderFetchUserDetail is used to trigger rendering of fetchUserDetails when a friend request is sent to this person
 
+  // could be sent from parent
   const toggleSideBar = () => {
     const sidebar = document.querySelector("div.bg-blue-800");
     if (sidebar) {
@@ -85,6 +82,31 @@ const SideBar: React.FC = () => {
     }).toString();
     const newURL = `${location.pathname}?${query}`;
     navigate(newURL);
+  }
+
+  const sendFriendRequest = async (sentToUserId: string) => {
+    const sentByUserId = localStorage.getItem("user_id")
+    if (!sentByUserId) {
+      console.log("UserId not found in the local storage")
+      alert("You must be logged in to send a friend request.");
+      return;
+    }
+    try {
+      const response = await axios.post(
+        "http://localhost:8000/api/v1/users/sendFriendRequest",
+        { user_id: sentByUserId, friend_id: sentToUserId }
+      );
+      if (response.status === 200) {
+        setRenderFetchUserDetail((prev) => prev + 1)
+      }
+      else {
+        console.error("Unexpected response:", response.data);
+        alert("Failed to send friend request. Please try again.");
+      }
+    } catch (error) {
+      console.error("Unable to send friend request:", error);
+      alert("An error occurred while sending the friend request. Please try again."); 
+    }
   }
 
   return (
@@ -119,7 +141,9 @@ const SideBar: React.FC = () => {
                 <span
                   key={user.id}
                   className="p-2 bg-blue-600 rounded hover:bg-blue-500 transition duration-200"
-                  onClick={() => userSelectionNavigation(user.id, user.username, user.email)}
+                  onClick={() =>
+                    userSelectionNavigation(user.id, user.username, user.email)
+                  }
                 >
                   {user.username}
                 </span>
@@ -157,13 +181,13 @@ const SideBar: React.FC = () => {
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 p-10 bg-blue-950 min-h-screen border-4 border-black">
+        <div className="flex-1 p-10 bg-blue-950 min-h-screen border-4 border-black text-white">
           {searchId == undefined || searchId.length === 0 ? (
             <>
-              <h1 className="text-3xl font-bold mb-5 text-gray-800">
+              <h1 className="text-3xl font-bold mb-5 text-white">
                 Main Content
               </h1>
-              <p className="text-gray-600">
+              <p className="text-white">
                 This is the main content area. The sidebar is responsive and
                 will collapse on smaller screens.
               </p>
@@ -203,12 +227,19 @@ const SideBar: React.FC = () => {
                     {new Date(userSearchInfo.created_at).toLocaleDateString()}
                   </span>
                   <span>
-                    {userSearchInfo.friendStatus ? (
-                      <button className="bg-blue-500 text-white font-bold py-2 px-6 rounded-full hover:bg-blue-600 transition-colors">
+                    {userSearchInfo.friendStatus === "accepted" ? (
+                      <button className="btn bg-blue-500 text-white font-bold py-2 px-6 rounded-full hover:bg-blue-600 transition-colors cursor-pointer">
                         Friends
                       </button>
+                    ) : userSearchInfo.friendStatus === "pending" ? (
+                      <button className="btn bg-blue-500 text-white font-bold py-2 px-6 rounded-full hover:bg-blue-600 transition-colors cursor-pointer">
+                        Pending
+                      </button>
                     ) : (
-                      <button className="bg-blue-500 text-white font-bold py-2 px-6 rounded-full hover:bg-blue-600 transition-colors">
+                      <button
+                        className="btn bg-blue-500 text-white font-bold py-2 px-6 rounded-full hover:bg-blue-600 transition-colors cursor-pointer"
+                        onClick={() => sendFriendRequest(userSearchInfo.id)}
+                      >
                         Add Friend
                       </button>
                     )}

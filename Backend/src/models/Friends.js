@@ -5,7 +5,7 @@ const Friends = async () => {
     id VARCHAR(255) PRIMARY KEY,
     user_id VARCHAR(255) NOT NULL,
     friend_id VARCHAR(255) NOT NULL,
-    status ENUM('pending','accepted','rejected') DEFAULT 'pending',
+    status ENUM('pending','accepted','rejected', 'unknown') DEFAULT 'unknown',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_user_id FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     CONSTRAINT fk_friend_id FOREIGN KEY (friend_id) REFERENCES users(id) ON DELETE CASCADE

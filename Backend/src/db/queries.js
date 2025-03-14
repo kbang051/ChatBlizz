@@ -68,10 +68,11 @@ const getUserDetail = async (req, res) => {
     ])
   
     const user = userTableResponse[0]
-    if (friendsTableResponse.length === 0 || friendsTableResponse[0].status === "pending" || friendsTableResponse[0].status === "rejected")
-      user.friendStatus = false 
-    else 
-      user.friendStatus = true
+    user.friendStatus = (friendsTableResponse?.length === 0) ? "unknown" : friendsTableResponse[0].status
+    // if (friendsTableResponse.length === 0 || friendsTableResponse[0].status === "pending" || friendsTableResponse[0].status === "rejected")
+    //   user.friendStatus = false 
+    // else 
+    //   user.friendStatus = true
 
     return res.status(200).send(user)
   } catch (error) {
@@ -146,7 +147,33 @@ const acceptFriendRequest = async (req, res) => {
   }
 }
 
-export { saveMessage, getAllUsers, fetchSearchResults, getUserDetail, sendFriendRequest, acceptFriendRequest };
+const displayFriendRequests = async (req, res) => {
+  const accountHoldersId = decodeURIComponent(req.params?.userId);
+  console.log("AccountHoldersId: ", accountHoldersId)
+  if (!accountHoldersId || accountHoldersId === "") {
+    console.log("Empty AccountHolders ID");
+    return res.status(400).json({ error: "Account Holder's ID is required" });
+  }
+  const query = `SELECT friends.user_id, friends.status, friends.created_at, users.username 
+                 FROM friends 
+                 JOIN users ON friends.user_id = users.id 
+                 WHERE friends.friend_id = ? AND friends.status = "pending"`;
+  //user_id corresponds to the person who sent the friend request in this case and friend_id is the account holder's id
+  try {
+    const [response] = await pool.query(query, [ accountHoldersId ]);
+    if (response.length === 0) {
+      console.log("No Pending Requests"); 
+      return res.status(201).json({message: "No Pending Requests"});
+    } else if (response.length > 0) {
+      return res.status(200).send(response);
+    }
+  } catch (error) {
+    console.error("Unable to fetch friend requests:", error);
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
+}
+
+export { saveMessage, getAllUsers, fetchSearchResults, getUserDetail, sendFriendRequest, acceptFriendRequest, displayFriendRequests };
 
 
 // {
