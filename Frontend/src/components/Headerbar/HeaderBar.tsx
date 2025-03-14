@@ -169,8 +169,7 @@ const HeaderBar = () => {
           )}
         </div>
 
-        {/* Action Icons */}
-        {/* <div className="flex items-center space-x-7 cursor-pointer">
+        <div className="flex items-center space-x-7">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
@@ -203,77 +202,28 @@ const HeaderBar = () => {
                 />
               </svg>
             </MenuButton>
-              <MenuItems className="absolute right-0 mt-5 w-72 bg-white border rounded shadow-lg cursor-pointer" anchor="bottom">
-                {friendRequests.map((item, index) => (
-              <React.Fragment key={item.id}>
-                <MenuItem as="div" className = "flex justify-between">
-                  <span className={`block px-4 py-2 text-gray-700 data-[focus]:bg-blue-100`}> {item.username} </span>
-                  <span className={`block px-4 py-2 text-gray-700 data-[focus]:bg-blue-100`}> {item.status} </span>
-                </MenuItem>
-              </React.Fragment>
-                ))}
-            </MenuItems>
-          </Menu>
-
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth="1.5"
-            stroke="currentColor"
-            className="size-6"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
-            />
-          </svg>
-        </div> */}
-
-        <div className="flex items-center space-x-7 cursor-pointer">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth="1.5"
-            stroke="currentColor"
-            className="size-6"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z"
-            />
-          </svg>
-
-          <Menu as="div" className="relative inline-flex text-left">
-            <MenuButton onClick={fetchFriendRequests}>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth="1.5"
-                stroke="currentColor"
-                className="size-6 cursor-pointer"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0"
-                />
-              </svg>
-            </MenuButton>
-            <MenuItems className="absolute right-0 mt-5 w-72 bg-white border rounded shadow-lg cursor-pointer overflow-y-auto max-h-60">
+            <MenuItems className="absolute right-0 mt-8 w-72 bg-white border rounded shadow-lg overflow-y-auto max-h-60 flex flex-col">
               {friendRequests.map((item, index) => (
                 <React.Fragment key={item.id}>
-                  <MenuItem as="div" className="flex justify-between px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">
-                    <div className="flex flex-col">
-                      <span className="text-gray-800 font-medium">{item.username}</span>
-                      <span className="text-sm text-gray-500">{item.status}</span>
-                      <span className="text-xs text-gray-400">{new Date(item.created_at).toLocaleDateString()}</span>
-                    </div>
-                  </MenuItem>
+                  {item.status === "pending" && (
+                    <MenuItem
+                      as="div"
+                      className="flex justify-between px-4 py-2 hover:bg-gray-100 dark:hover:bg-yellow-200 rounded-md"
+                    >
+                      <span className="text-gray-800 font-medium hover:cursor-pointer hover:text-blue-700 hover:underline">
+                        {item.username}
+                      </span>
+
+                      <div className="flex gap-1">
+                        <button className="bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold py-1 px-3 rounded-md transition duration-200 cursor-pointer">
+                          Accept
+                        </button>
+                        <button className="bg-red-700 hover:bg-red-800 text-white text-sm font-semibold py-1 px-3 rounded-md transition duration-200 cursor-pointer">
+                          Reject
+                        </button>
+                      </div>
+                    </MenuItem>
+                  )}
                 </React.Fragment>
               ))}
             </MenuItems>
