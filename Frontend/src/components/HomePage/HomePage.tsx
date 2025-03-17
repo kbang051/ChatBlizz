@@ -1,8 +1,7 @@
 import SideBar from "../Sidebar/SideBar.tsx";
 import HeaderBar from "../Headerbar/HeaderBar.tsx";
-import { useState, useEffect } from "react";
-import axios from "axios";
-
+import { useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 
 interface User {
   id: string;
@@ -20,14 +19,31 @@ interface userSearchInfo {
 }
 
 const HomePage: React.FC = () => {
-  
+  const navigate = useNavigate()
+  const [searchId, setSearchId] = useState<string | null>(null)
+  const [users, setUsers] = useState<User[]>([])
+  const [userSearchInfo, setUserSearchInfo] = useState<userSearchInfo>()
+  const [renderFetchUserDetail, setRenderFetchUserDetail] = useState(0)
+    
   return (
     <>
-      <HeaderBar />
-      <SideBar />
+      <HeaderBar setRenderFetchUserDetail={setRenderFetchUserDetail} />
+      <SideBar
+        searchId={searchId}
+        setSearchId={setSearchId}
+        users={users}
+        setUsers={setUsers}
+        userSearchInfo={userSearchInfo}
+        setUserSearchInfo={setUserSearchInfo}
+        renderFetchUserDetail={renderFetchUserDetail}
+        setRenderFetchUserDetail={setRenderFetchUserDetail}
+      />
     </>
   );
 };
 
 export default HomePage;
+
+
+
 

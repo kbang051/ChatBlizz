@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
 
 interface User {
@@ -15,7 +16,13 @@ interface FriendRequestResponse {
   username: string 
 }
 
-const HeaderBar = () => {
+interface HeaderBarProps {
+  setRenderFetchUserDetail: React.Dispatch<React.SetStateAction<number>>
+}
+
+const HeaderBar: React.FC <HeaderBarProps> = ({setRenderFetchUserDetail}) => {
+  const navigate = useNavigate()
+  const location = useLocation()
   const [input, setInput] = useState<string>("");
   const [users, setUsers] = useState<User[]>([]);
   const [isSearchFocused, setIsSearchFocused] = useState<boolean>(false);
@@ -36,6 +43,18 @@ const HeaderBar = () => {
       setUsers([]);
     }
   };
+
+  //could be sent from the parent component
+  const userSelectionNavigation = (friendId: string, username: string, email: string) => {
+    const query = new URLSearchParams({
+      searchId: friendId,
+      username: username,
+      email: email,
+    }).toString();
+    const newURL = `${location.pathname}?${query}`;
+    navigate(newURL);
+    setRenderFetchUserDetail((prev) => prev+1) // triggers a re-render in sidebar component i.e handling main content area
+  }
 
   // Handle clicks outside the search area to close the dropdown
   useEffect(() => {
@@ -143,6 +162,10 @@ const HeaderBar = () => {
                     <li
                       key={user.email}
                       className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer flex items-center"
+                      onClick={() => {
+                        userSelectionNavigation(user.id, user.username, user.email)
+                        setIsSearchFocused(false)
+                      } } // addition
                     >
                       <div className="flex-shrink-0 mr-3">
                         <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400">

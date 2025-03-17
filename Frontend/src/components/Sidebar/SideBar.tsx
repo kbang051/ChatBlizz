@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import axios from "axios";
 import { useNavigate, useLocation } from "react-router-dom";
 
@@ -17,17 +17,25 @@ interface userSearchInfo {
     friendStatus: string  
 }
 
-const SideBar: React.FC = () => {
+interface SideBarProps {
+  searchId : string | null,
+  setSearchId: React.Dispatch<React.SetStateAction<string | null>>,
+  users: User[],
+  setUsers: React.Dispatch<React.SetStateAction<User[]>>,
+  userSearchInfo: userSearchInfo | undefined,
+  setUserSearchInfo: React.Dispatch<React.SetStateAction<userSearchInfo | undefined>>,
+  renderFetchUserDetail: number,
+  setRenderFetchUserDetail: React.Dispatch<React.SetStateAction<number>>,
+}
+
+const SideBar: React.FC <SideBarProps> = ({ searchId, setSearchId, users, setUsers, userSearchInfo, setUserSearchInfo, renderFetchUserDetail, setRenderFetchUserDetail }) => {
   const location = useLocation()
   const navigate = useNavigate()
-  const [users, setUsers] = useState<User[]>([]); // could be sent from parent
-  const [userSearchInfo, setUserSearchInfo] = useState<userSearchInfo>() // could be sent from parent
   
   const queryParams = new URLSearchParams(location.search)
-  const searchId = queryParams.get("searchId")
-  const username = queryParams.get("username")
-  const email = queryParams.get("email")
-  const [renderFetchUserDetail, setRenderFetchUserDetail] = useState(0)
+  
+  const searchIdExtracted = queryParams.get("searchId")
+  setSearchId(searchIdExtracted) //addition
 
   useEffect(() => {
     const getAllUsers = async () => {
@@ -43,7 +51,7 @@ const SideBar: React.FC = () => {
     getAllUsers();
   }, []);
 
-  // This effect runs when URL parameters change
+  //This effect runs when URL parameters change
   useEffect(() => {
     const fetchUserDetails = async () => {
       if (searchId) {
@@ -153,28 +161,16 @@ const SideBar: React.FC = () => {
 
           {/* Navigation */}
           <nav>
-            <a
-              href="#"
-              className="block py-2.5 px-4 rounded transition duration-200 hover:bg-blue-700"
-            >
+            <a href="#" className="block py-2.5 px-4 rounded transition duration-200 hover:bg-blue-700">
               Home
             </a>
-            <a
-              href="#"
-              className="block py-2.5 px-4 rounded transition duration-200 hover:bg-blue-700"
-            >
+            <a href="#" className="block py-2.5 px-4 rounded transition duration-200 hover:bg-blue-700">
               About
             </a>
-            <a
-              href="#"
-              className="block py-2.5 px-4 rounded transition duration-200 hover:bg-blue-700"
-            >
+            <a href="#" className="block py-2.5 px-4 rounded transition duration-200 hover:bg-blue-700">
               Services
             </a>
-            <a
-              href="#"
-              className="block py-2.5 px-4 rounded transition duration-200 hover:bg-blue-700"
-            >
+            <a href="#" className="block py-2.5 px-4 rounded transition duration-200 hover:bg-blue-700">
               Contact
             </a>
           </nav>
@@ -251,6 +247,7 @@ const SideBar: React.FC = () => {
             </div>
           )}
         </div>
+        
       </div>
 
       {/* Toggle Button */}
