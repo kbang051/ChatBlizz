@@ -24,7 +24,7 @@ const HomePage: React.FC = () => {
   const [users, setUsers] = useState<User[]>([])
   const [userSearchInfo, setUserSearchInfo] = useState<userSearchInfo>()
   const [renderFetchUserDetail, setRenderFetchUserDetail] = useState(0)
-    
+
   return (
     <>
       <HeaderBar setRenderFetchUserDetail={setRenderFetchUserDetail} />

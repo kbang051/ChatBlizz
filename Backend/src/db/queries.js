@@ -15,16 +15,26 @@ const saveMessage = async (sender_id, receiver_id, content) => {
 };
 
 const getAllUsers = async (req, res) => { 
-  const query = `SELECT id, username, email FROM users`;
+  const q = decodeURIComponent(req.params?.q);
+  const query = ` SELECT users.id, users.username, users.email
+                  FROM users
+                  JOIN friends ON (users.id = friends.user_id OR users.id = friends.friend_id)
+                  WHERE (friends.user_id = ? OR friends.friend_id = ?) 
+                  AND friends.status = 'accepted'
+                  AND users.id != ?;`;
   try {
-    const [getRecords] = await pool.query(query);
-    if (getRecords.length > 0)
+    const [getRecords] = await pool.query(query, [q, q, q]);
+    if (getRecords.length > 0) {
       console.log("Records fetched from users table:", getRecords);
-    else 
+      return res.status(200).send(getRecords)
+    }
+    else {
       console.log("No users found in the database");
-    return res.status(200).send(getRecords);
+      return res.status(201).send(getRecords)
+    }
   } catch (error) {
     console.log("Unable to fetch details of all users:", error);
+    return res.status(500).send({ message: "Internal server error" });
   }
 };
 
@@ -49,7 +59,7 @@ const fetchSearchResults = async (req, res) => {
 const getUserDetail = async (req, res) => {
   console.log("Request received to fetch user info")
   const query1 = `SELECT id, username, email, avatar, created_at FROM users WHERE id = ? LIMIT 1`
-  const query2 = `SELECT status FROM friends WHERE user_id = ? AND friend_id = ? LIMIT 1`
+  const query2 = `SELECT status FROM friends WHERE (user_id = ? AND friend_id = ?) OR (friend_id = ? AND user_id = ?) LIMIT 1`
   try {
     const user_id   = decodeURIComponent(req.params?.userId) 
     const friend_id = decodeURIComponent(req.params?.friendId) 
@@ -64,15 +74,11 @@ const getUserDetail = async (req, res) => {
 
     const [[userTableResponse], [friendsTableResponse]] = await Promise.all([ //destructuring to remove meta data
       pool.query(query1, [friend_id]),
-      pool.query(query2, [user_id, friend_id]),
+      pool.query(query2, [user_id, friend_id, user_id, friend_id]),
     ])
   
     const user = userTableResponse[0]
     user.friendStatus = (friendsTableResponse?.length === 0) ? "unknown" : friendsTableResponse[0].status
-    // if (friendsTableResponse.length === 0 || friendsTableResponse[0].status === "pending" || friendsTableResponse[0].status === "rejected")
-    //   user.friendStatus = false 
-    // else 
-    //   user.friendStatus = true
 
     return res.status(200).send(user)
   } catch (error) {

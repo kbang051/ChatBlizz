@@ -9,38 +9,56 @@ interface User {
 }
 
 interface userSearchInfo {
-    id: string,
-    username: string,
-    email: string,
-    avatar: string,
-    created_at: string,
-    friendStatus: string  
+  id: string;
+  username: string;
+  email: string;
+  avatar: string;
+  created_at: string;
+  friendStatus: string;
 }
 
 interface SideBarProps {
-  searchId : string | null,
-  setSearchId: React.Dispatch<React.SetStateAction<string | null>>,
-  users: User[],
-  setUsers: React.Dispatch<React.SetStateAction<User[]>>,
-  userSearchInfo: userSearchInfo | undefined,
-  setUserSearchInfo: React.Dispatch<React.SetStateAction<userSearchInfo | undefined>>,
-  renderFetchUserDetail: number,
-  setRenderFetchUserDetail: React.Dispatch<React.SetStateAction<number>>,
+  searchId: string | null;
+  setSearchId: React.Dispatch<React.SetStateAction<string | null>>;
+  users: User[];
+  setUsers: React.Dispatch<React.SetStateAction<User[]>>;
+  userSearchInfo: userSearchInfo | undefined;
+  setUserSearchInfo: React.Dispatch<
+    React.SetStateAction<userSearchInfo | undefined>
+  >;
+  renderFetchUserDetail: number;
+  setRenderFetchUserDetail: React.Dispatch<React.SetStateAction<number>>;
 }
 
-const SideBar: React.FC <SideBarProps> = ({ searchId, setSearchId, users, setUsers, userSearchInfo, setUserSearchInfo, renderFetchUserDetail, setRenderFetchUserDetail }) => {
-  const location = useLocation()
-  const navigate = useNavigate()
-  
-  const queryParams = new URLSearchParams(location.search)
-  
-  const searchIdExtracted = queryParams.get("searchId")
-  setSearchId(searchIdExtracted) //addition
+const SideBar: React.FC<SideBarProps> = ({
+  searchId,
+  setSearchId,
+  users,
+  setUsers,
+  userSearchInfo,
+  setUserSearchInfo,
+  renderFetchUserDetail,
+  setRenderFetchUserDetail,
+}) => {
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const queryParams = new URLSearchParams(location.search);
+
+  useEffect(() => {
+    const searchIdExtracted = queryParams.get("searchId");
+    setSearchId(searchIdExtracted);
+  }, [location.search]);
 
   useEffect(() => {
     const getAllUsers = async () => {
+      const userId = localStorage.getItem("user_id") || 1;
       try {
-        const response = await axios.get("http://localhost:8000/api/v1/users/getAllUsers");
+        const response = await axios.get(
+          `http://localhost:8000/api/v1/users/getAllUsers/${encodeURIComponent(
+            userId
+          )}`
+        );
         if (response.status === 200) {
           setUsers(response.data);
         }
@@ -49,7 +67,7 @@ const SideBar: React.FC <SideBarProps> = ({ searchId, setSearchId, users, setUse
       }
     };
     getAllUsers();
-  }, []);
+  }, [renderFetchUserDetail]);
 
   //This effect runs when URL parameters change
   useEffect(() => {
@@ -61,7 +79,11 @@ const SideBar: React.FC <SideBarProps> = ({ searchId, setSearchId, users, setUse
             console.log("User ID not found in localStorage");
             return;
           }
-          const response = await axios.get(`http://localhost:8000/api/v1/users/getUserDetail/${encodeURIComponent(userId)}/and/${encodeURIComponent(searchId)}`);
+          const response = await axios.get(
+            `http://localhost:8000/api/v1/users/getUserDetail/${encodeURIComponent(
+              userId
+            )}/and/${encodeURIComponent(searchId)}`
+          );
           console.log("User details:", response.data);
           setUserSearchInfo(response.data);
         } catch (error) {
@@ -72,7 +94,7 @@ const SideBar: React.FC <SideBarProps> = ({ searchId, setSearchId, users, setUse
       }
     };
     fetchUserDetails();
-  }, [searchId, renderFetchUserDetail]);  //renderFetchUserDetail is used to trigger rendering of fetchUserDetails when a friend request is sent to this person
+  }, [searchId, renderFetchUserDetail]); //renderFetchUserDetail is used to trigger rendering of fetchUserDetails when a friend request is sent to this person
 
   // could be sent from parent
   const toggleSideBar = () => {
@@ -82,7 +104,11 @@ const SideBar: React.FC <SideBarProps> = ({ searchId, setSearchId, users, setUse
     }
   };
 
-  const userSelectionNavigation = (friendId: string, username: string, email: string) => {
+  const userSelectionNavigation = (
+    friendId: string,
+    username: string,
+    email: string
+  ) => {
     const query = new URLSearchParams({
       searchId: friendId,
       username: username,
@@ -90,12 +116,12 @@ const SideBar: React.FC <SideBarProps> = ({ searchId, setSearchId, users, setUse
     }).toString();
     const newURL = `${location.pathname}?${query}`;
     navigate(newURL);
-  }
+  };
 
   const sendFriendRequest = async (sentToUserId: string) => {
-    const sentByUserId = localStorage.getItem("user_id")
+    const sentByUserId = localStorage.getItem("user_id");
     if (!sentByUserId) {
-      console.log("UserId not found in the local storage")
+      console.log("UserId not found in the local storage");
       alert("You must be logged in to send a friend request.");
       return;
     }
@@ -105,23 +131,24 @@ const SideBar: React.FC <SideBarProps> = ({ searchId, setSearchId, users, setUse
         { user_id: sentByUserId, friend_id: sentToUserId }
       );
       if (response.status === 200) {
-        setRenderFetchUserDetail((prev) => prev + 1)
-      }
-      else {
+        setRenderFetchUserDetail((prev) => prev + 1);
+      } else {
         console.error("Unexpected response:", response.data);
         alert("Failed to send friend request. Please try again.");
       }
     } catch (error) {
       console.error("Unable to send friend request:", error);
-      alert("An error occurred while sending the friend request. Please try again."); 
+      alert(
+        "An error occurred while sending the friend request. Please try again."
+      );
     }
-  }
+  };
 
   return (
     <div className="bg-gray-100 h-screen">
       <div className="flex h-screen">
         {/* Sidebar */}
-        <div className="bg-blue-800 text-white w-64 space-y-6 px-2 py-7 absolute inset-y-0 left-0 transform -translate-x-full md:relative md:translate-x-0 transition duration-200 ease-in-out">
+        <div className="bg-gray-900 text-white w-64 space-y-6 px-2 py-7 absolute inset-y-0 left-0 transform -translate-x-full md:relative md:translate-x-0 transition duration-200 ease-in-out">
           {/* Logo */}
           <a href="#" className="flex items-center space-x-2 px-4">
             <svg
@@ -142,13 +169,13 @@ const SideBar: React.FC <SideBarProps> = ({ searchId, setSearchId, users, setUse
           </a>
 
           {/* Available Users */}
-          <div className="h-3/5 py-2.5 px-4 rounded transition duration-200 hover:bg-blue-700 overflow-y-auto">
+          <div className="max-h-3/5 py-2.5 px-4 rounded transition duration-200 overflow-y-auto">
             <span className="block font-semibold text-lg">Available</span>
             <div className="flex flex-col pt-2 space-y-2">
               {users.map((user) => (
                 <span
                   key={user.id}
-                  className="p-2 bg-blue-600 rounded hover:bg-blue-500 transition duration-200"
+                  className="p-2 rounded transition duration-200 cursor-pointer hover:bg-gray-800 border-b-1 border-gray-700"
                   onClick={() =>
                     userSelectionNavigation(user.id, user.username, user.email)
                   }
@@ -161,37 +188,119 @@ const SideBar: React.FC <SideBarProps> = ({ searchId, setSearchId, users, setUse
 
           {/* Navigation */}
           <nav>
-            <a href="#" className="block py-2.5 px-4 rounded transition duration-200 hover:bg-blue-700">
+            <a
+              href="#"
+              className="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-800"
+            >
               Home
             </a>
-            <a href="#" className="block py-2.5 px-4 rounded transition duration-200 hover:bg-blue-700">
+            <a
+              href="#"
+              className="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-800"
+            >
               About
             </a>
-            <a href="#" className="block py-2.5 px-4 rounded transition duration-200 hover:bg-blue-700">
+            <a
+              href="#"
+              className="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-800"
+            >
               Services
             </a>
-            <a href="#" className="block py-2.5 px-4 rounded transition duration-200 hover:bg-blue-700">
+            <a
+              href="#"
+              className="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-800"
+            >
               Contact
             </a>
           </nav>
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 p-10 bg-blue-950 min-h-screen border-4 border-black text-white">
+        <div className="flex-1 bg-blue-500 border-4 border-black text-white box-border">
           {searchId == undefined || searchId.length === 0 ? (
             <>
-              <h1 className="text-3xl font-bold mb-5 text-white">
+              <h1 className="text-3xl font-bold mb-5 text-white px-5 py-5">
                 Main Content
               </h1>
-              <p className="text-white">
+              <p className="text-white px-5">
                 This is the main content area. The sidebar is responsive and
                 will collapse on smaller screens.
               </p>
             </>
+          ) : userSearchInfo?.friendStatus === "accepted" ? (
+            // User HeaderBar
+            <>
+              <div className="flex flex-col h-screen">
+                {/* User HeaderBar */}
+                <div className="flex h-16 w-full items-center justify-between p-8 bg-gray-900 cursor-pointer">
+                  <div className="font-medium text-xl text-white">
+                    <span>
+                      {(userSearchInfo?.username ?? "")
+                        .charAt(0)
+                        .toUpperCase() +
+                        (userSearchInfo?.username ?? "").substring(1)}
+                    </span>
+                  </div>
+                  <div className="font-medium text-xl text-white flex gap-10 items-center content-center">
+                    <span>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth="1.5"
+                        stroke="currentColor"
+                        className="size-5 font-bold"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
+                        />
+                      </svg>
+                    </span>
+                    <span className="size-6 font-medium">:</span>
+                  </div>
+                </div>
+
+                {/* Message Area */}
+                <div className="flex-1 bg-gray-700 w-full flex-col">
+                  {/* Content goes here */}
+                  <div className="h-11/12 w-full bg-[url('/6195005.jpg')] bg-cover bg-center">
+                    {/* User messages */}
+                  </div>
+                  <div className="flex gap-3 bg-gray-900 h-1/12 items-center content-center px-5">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke-width="1.5"
+                      stroke="currentColor"
+                      className="size-6 hover:cursor-pointer"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M12 4.5v15m7.5-7.5h-15"
+                      />
+                    </svg>
+                    <textarea
+                      placeholder="Type a message"
+                      className="w-full px-3 py-2 outline-none border border-white rounded-lg resize-none overflow-hidden"
+                      rows={1}
+                      onInput={(e) => {
+                        const target = e.target as HTMLTextAreaElement; 
+                        target.style.height = "auto";
+                        target.style.height = `${target.scrollHeight}px`;
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </>
           ) : (
-            <div className="flex justify-center items-center border-black h-full">
+            <div className="flex justify-center items-center min-h-full">
               {userSearchInfo != null ? (
-                <div className="flex flex-col gap-4 items-center p-6 rounded-lg shadow-md w-full max-w-md bg-white">
+                <div className="flex flex-col gap-4 items-center justify-center p-6 rounded-md w-full bg-blue-950">
                   <div className="w-24 h-24 rounded-full overflow-hidden flex items-center justify-center bg-gray-200">
                     {userSearchInfo.avatar?.length > 0 ? (
                       <img
@@ -204,7 +313,7 @@ const SideBar: React.FC <SideBarProps> = ({ searchId, setSearchId, users, setUse
                         xmlns="http://www.w3.org/2000/svg"
                         viewBox="0 0 24 24"
                         fill="currentColor"
-                        className="w-12 h-12 text-gray-500"
+                        className="w-18 h-18 text-gray-500"
                       >
                         <path
                           fillRule="evenodd"
@@ -214,11 +323,13 @@ const SideBar: React.FC <SideBarProps> = ({ searchId, setSearchId, users, setUse
                       </svg>
                     )}
                   </div>
-                  <span className="text-xl font-semibold text-gray-800">
+                  <span className="text-2xl font-semibold text-gray-600">
                     {userSearchInfo.username}
                   </span>
-                  <span className="text-gray-600">{userSearchInfo.email}</span>
-                  <span className="text-sm text-gray-500">
+                  <span className="text-gray-600 text-xl">
+                    {userSearchInfo.email}
+                  </span>
+                  <span className="text-lg text-gray-500">
                     Joined on{" "}
                     {new Date(userSearchInfo.created_at).toLocaleDateString()}
                   </span>
@@ -247,7 +358,6 @@ const SideBar: React.FC <SideBarProps> = ({ searchId, setSearchId, users, setUse
             </div>
           )}
         </div>
-        
       </div>
 
       {/* Toggle Button */}
@@ -276,5 +386,3 @@ const SideBar: React.FC <SideBarProps> = ({ searchId, setSearchId, users, setUse
 };
 
 export default SideBar;
-
-

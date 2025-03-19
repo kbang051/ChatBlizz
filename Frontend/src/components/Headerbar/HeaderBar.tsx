@@ -10,7 +10,7 @@ interface User {
 }
 
 interface FriendRequestResponse {
-  id: string,
+  user_id: string,
   status: string,
   created_at: string,
   username: string 
@@ -80,6 +80,25 @@ const HeaderBar: React.FC <HeaderBarProps> = ({setRenderFetchUserDetail}) => {
       }
     } catch (error) {
       console.error("An error occured in fetchFriendRequests function", error);
+    }
+  }
+
+  const acceptFriendRequest = async (friend_id: string) => {
+    const user_id = localStorage.getItem("user_id") || 1
+    try {
+      const response = await axios.post("http://localhost:8000/api/v1/users/acceptFriendRequest", { user_id: user_id, friend_id: friend_id })
+      if (response.status === 200) {
+        console.log(`${user_id} and ${friend_id} are now friends`);
+        setRenderFetchUserDetail((prev) => prev + 1);
+        return;
+      } else {
+        console.log("Unable to accept friend request of user ", friend_id);
+        alert(`Unable to accept friend request of user ${friend_id}`);
+        return;
+      }
+    } catch (error) {
+      console.log("Unable to accept friend request of user ", friend_id);
+      alert("An error occurred while accepting the friend request. Please try again.");
     }
   }
 
@@ -163,9 +182,13 @@ const HeaderBar: React.FC <HeaderBarProps> = ({setRenderFetchUserDetail}) => {
                       key={user.email}
                       className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer flex items-center"
                       onClick={() => {
-                        userSelectionNavigation(user.id, user.username, user.email)
-                        setIsSearchFocused(false)
-                      } } // addition
+                        userSelectionNavigation(
+                          user.id,
+                          user.username,
+                          user.email
+                        );
+                        setIsSearchFocused(false);
+                      }} // addition
                     >
                       <div className="flex-shrink-0 mr-3">
                         <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400">
@@ -225,29 +248,32 @@ const HeaderBar: React.FC <HeaderBarProps> = ({setRenderFetchUserDetail}) => {
                 />
               </svg>
             </MenuButton>
-            <MenuItems className="absolute right-0 mt-8 w-72 bg-white border rounded shadow-lg overflow-y-auto max-h-60 flex flex-col">
-              {friendRequests.map((item, index) => (
-                <React.Fragment key={item.id}>
-                  {item.status === "pending" && (
-                    <MenuItem
-                      as="div"
-                      className="flex justify-between px-4 py-2 hover:bg-gray-100 dark:hover:bg-yellow-200 rounded-md"
-                    >
-                      <span className="text-gray-800 font-medium hover:cursor-pointer hover:text-blue-700 hover:underline">
-                        {item.username}
-                      </span>
 
-                      <div className="flex gap-1">
-                        <button className="bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold py-1 px-3 rounded-md transition duration-200 cursor-pointer">
-                          Accept
-                        </button>
-                        <button className="bg-red-700 hover:bg-red-800 text-white text-sm font-semibold py-1 px-3 rounded-md transition duration-200 cursor-pointer">
-                          Reject
-                        </button>
-                      </div>
-                    </MenuItem>
+            <MenuItems className="absolute right-0 mt-8 w-72 bg-white border rounded shadow-lg overflow-y-auto max-h-60 flex flex-col">
+              {friendRequests.map((item) => (
+                <MenuItem
+                  key={item.user_id} // Move the key prop here
+                  as="div"
+                  className="flex justify-between px-4 py-2 hover:bg-gray-100 dark:hover:bg-yellow-200 rounded-md"
+                >
+                  <span className="text-gray-800 font-medium hover:cursor-pointer hover:text-blue-700 hover:underline">
+                    {item.username}
+                  </span>
+
+                  {item.status === "pending" && (
+                    <div className="flex gap-1">
+                      <button
+                        className="bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold py-1 px-3 rounded-md transition duration-200 cursor-pointer"
+                        onClick={() => acceptFriendRequest(item.user_id)}
+                      >
+                        Accept
+                      </button>
+                      <button className="bg-red-700 hover:bg-red-800 text-white text-sm font-semibold py-1 px-3 rounded-md transition duration-200 cursor-pointer">
+                        Reject
+                      </button>
+                    </div>
                   )}
-                </React.Fragment>
+                </MenuItem>
               ))}
             </MenuItems>
           </Menu>
