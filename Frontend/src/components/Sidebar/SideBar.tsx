@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate, useLocation } from "react-router-dom";
 
@@ -23,11 +23,12 @@ interface SideBarProps {
   users: User[];
   setUsers: React.Dispatch<React.SetStateAction<User[]>>;
   userSearchInfo: userSearchInfo | undefined;
-  setUserSearchInfo: React.Dispatch<
-    React.SetStateAction<userSearchInfo | undefined>
-  >;
+  setUserSearchInfo: React.Dispatch<React.SetStateAction<userSearchInfo | undefined>>;
   renderFetchUserDetail: number;
   setRenderFetchUserDetail: React.Dispatch<React.SetStateAction<number>>;
+  // setInputMessage: React.Dispatch<React.SetStateAction<string>>;
+  setReceiverId: React.Dispatch<React.SetStateAction<string>>;
+  onSendMessage: (content: string, targetReceiverId: string) => void
 }
 
 const SideBar: React.FC<SideBarProps> = ({
@@ -39,10 +40,13 @@ const SideBar: React.FC<SideBarProps> = ({
   setUserSearchInfo,
   renderFetchUserDetail,
   setRenderFetchUserDetail,
+  // setInputMessage,
+  setReceiverId,
+  onSendMessage
 }) => {
   const location = useLocation();
   const navigate = useNavigate();
-
+  const [messageField, setMessageField] = useState("")
   const queryParams = new URLSearchParams(location.search);
 
   useEffect(() => {
@@ -141,6 +145,16 @@ const SideBar: React.FC<SideBarProps> = ({
       alert(
         "An error occurred while sending the friend request. Please try again."
       );
+    }
+  };
+
+  const handleSendMessage = (receiverId: string) => {
+    console.log("Message Field: ", messageField.trim())
+    console.log("Request received at handleSendMessage and the receiver id is ", receiverId)
+    if (messageField.trim() && receiverId.trim()) {
+      setMessageField(""); // Clear local state
+      setReceiverId(receiverId); // Update receiverId in parent
+      onSendMessage(messageField.trim(), receiverId.trim()); // Delegate to parent
     }
   };
 
@@ -265,35 +279,63 @@ const SideBar: React.FC<SideBarProps> = ({
                 {/* Message Area */}
                 <div className="flex-1 bg-gray-700 w-full flex-col">
                   {/* Content goes here */}
-                  <div className="h-11/12 w-full bg-[url('/6195005.jpg')] bg-cover bg-center">
+                  <div className="h-11/12 w-full bg-[url('/6195005.jpg')] bg-cover bg-center" id = "messageArea">
                     {/* User messages */}
                   </div>
-                  <div className="flex gap-3 bg-gray-900 h-1/12 items-center content-center px-5">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke-width="1.5"
-                      stroke="currentColor"
-                      className="size-6 hover:cursor-pointer"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M12 4.5v15m7.5-7.5h-15"
-                      />
-                    </svg>
+                  <div className="flex gap-3 bg-gray-900 h-1/12 items-center px-5">
+                  {/* Attachment/Add icon (optional) */}
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth="1.5"
+                    stroke="currentColor"
+                    className="size-6 hover:cursor-pointer text-blue-500"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M12 4.5v15m7.5-7.5h-15"
+                    />
+                  </svg>
+
+                  {/* Textarea + Send button container */}
+                  <div className="flex flex-1 items-center gap-2 border border-white rounded-lg">
                     <textarea
                       placeholder="Type a message"
-                      className="w-full px-3 py-2 outline-none border border-white rounded-lg resize-none overflow-hidden"
+                      className="flex-1 px-3 py-2 outline-none resize-none overflow-hidden"
+                      value={messageField}
                       rows={1}
                       onInput={(e) => {
-                        const target = e.target as HTMLTextAreaElement; 
-                        target.style.height = "auto";
-                        target.style.height = `${target.scrollHeight}px`;
+                        e.currentTarget.style.height = "auto";
+                        e.currentTarget.style.height = `${e.currentTarget.scrollHeight}px`;
+                      }}
+                      onChange={(event) => {
+                        setMessageField(event.target.value)
+                        console.log(messageField)
                       }}
                     />
+
+                    {/* Send button (adjust size/icon as needed) */}
+                    <button className="p-2 text-gray-800 hover:text-blue-600">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth="1.5"
+                        stroke="currentColor"
+                        className="size-5"
+                        onClick={() => handleSendMessage(userSearchInfo?.id)}
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"
+                        />
+                      </svg>
+                    </button>
                   </div>
+                </div>
                 </div>
               </div>
             </>

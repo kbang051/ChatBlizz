@@ -3,12 +3,11 @@ import ApiResponse from "../utils/ApiResponse.js";
 
 const saveMessage = async (sender_id, receiver_id, content) => {
   const query = `INSERT INTO messages 
-                 (UUID(), sender_id, receiver_id, message)
-                 VALUES (?, ?, ?)`;
+                 (id, sender_id, receiver_id, message)
+                 VALUES (UUID(), ?, ?, ?)`;
   try {
     const [insertMessage] = await pool.query(query, [sender_id, receiver_id, content]);
     console.log("Message inserted successfully in the message table");
-    console.log(insertMessage);
   } catch (error) {
     console.error("Unable to insert message: ", error);
   }
@@ -179,7 +178,33 @@ const displayFriendRequests = async (req, res) => {
   }
 }
 
-export { saveMessage, getAllUsers, fetchSearchResults, getUserDetail, sendFriendRequest, acceptFriendRequest, displayFriendRequests };
+const showConversation = async (req, res) => {
+  const { userId1, userId2, cursor, limit = 15 } = req.query
+  if (!userId1 || !userId2) {
+    return res.status(400).json({ message: 'Both userId1 and userId2 are required' });
+  }
+  const query = ` SELECT * FROM messages 
+                  WHERE ((sender_id = ? AND receiver_id = ?) 
+                  OR (sender_id = ? AND receiver_id = ?))
+                  ${cursor ? "AND created_at < ?" : ""}
+                  ORDER BY created_at DESC
+                  LIMIT ? `;
+  
+  const params = cursor ? [userId1, userId2, userId2, userId1, cursor, parseInt(limit)] : [userId1, userId2, userId2, userId1, parseInt(limit)];
+
+  try {
+    const [messages] = await pool.query(query, params);
+    if (messages.length === 0) {
+      return res.status(200).json([]); 
+    }
+    return res.status(200).json(messages);
+  } catch (error) {
+    console.error("Database error:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+}
+
+export { saveMessage, getAllUsers, fetchSearchResults, getUserDetail, sendFriendRequest, acceptFriendRequest, displayFriendRequests, showConversation };
 
 
 // {
