@@ -1,0 +1,6 @@
+1. LocalStorage is used to store userId of the user who logged in. 
+   Therefore, if different users try to log in from the same system and the same browser but different tabs, 
+   the application crashes. 
+
+2. Fix scroll of the chatWindow - Whenever the messages cannot fit within the screen size, 
+   the parent component increases its size, resulting in inconsistent CSS. 

@@ -179,6 +179,7 @@ const displayFriendRequests = async (req, res) => {
 }
 
 const showConversation = async (req, res) => {
+  console.log("Request received to show conversations")
   const { userId1, userId2, cursor, limit = 15 } = req.query
   if (!userId1 || !userId2) {
     return res.status(400).json({ message: 'Both userId1 and userId2 are required' });
@@ -194,6 +195,7 @@ const showConversation = async (req, res) => {
 
   try {
     const [messages] = await pool.query(query, params);
+    console.log("Response sent by showConversations: ", messages)
     if (messages.length === 0) {
       return res.status(200).json([]); 
     }

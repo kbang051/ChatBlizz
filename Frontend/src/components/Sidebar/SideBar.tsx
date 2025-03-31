@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import ChatWindow from "../ChatComponent/ChatWindow.tsx";
 import { useNavigate, useLocation } from "react-router-dom";
 
 interface User {
@@ -281,6 +282,7 @@ const SideBar: React.FC<SideBarProps> = ({
                   {/* Content goes here */}
                   <div className="h-11/12 w-full bg-[url('/6195005.jpg')] bg-cover bg-center" id = "messageArea">
                     {/* User messages */}
+                    <ChatWindow currentUserId = {localStorage.getItem("user_id") || ""} otherUserId = {userSearchInfo?.id || ""}/>
                   </div>
                   <div className="flex gap-3 bg-gray-900 h-1/12 items-center px-5">
                   {/* Attachment/Add icon (optional) */}
