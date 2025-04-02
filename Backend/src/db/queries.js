@@ -78,7 +78,7 @@ const getUserDetail = async (req, res) => {
   
     const user = userTableResponse[0]
     user.friendStatus = (friendsTableResponse?.length === 0) ? "unknown" : friendsTableResponse[0].status
-
+    console.log("Response sent by getuserDetail: ", user)
     return res.status(200).send(user)
   } catch (error) {
     console.error("Failed to get user detail from the backend: ", error)
@@ -179,8 +179,9 @@ const displayFriendRequests = async (req, res) => {
 }
 
 const showConversation = async (req, res) => {
-  console.log("Request received to show conversations")
+  // userId1: cbtkFasu9yVa2VI6VFlDREoiBvi2, userId2: nazVGdU3B3UCuz1c3HvqPBc6H722, cursor: undefined, limit: 20
   const { userId1, userId2, cursor, limit = 15 } = req.query
+  console.log(`Request received at showConversation -- userId1: ${userId1}, userId2: ${userId2}, cursor: ${cursor}, limit: ${limit}`)
   if (!userId1 || !userId2) {
     return res.status(400).json({ message: 'Both userId1 and userId2 are required' });
   }

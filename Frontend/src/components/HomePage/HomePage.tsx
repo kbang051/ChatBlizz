@@ -33,16 +33,29 @@ const HomePage: React.FC = () => {
   const [receiverId, setReceiverId] = useState("")
 
   // Register user and set up listeners
+
+  //1. Since the dependency array is [], the useEffect runs only once when the component mounts.
+  //2. It registers the current user by emitting "register" to the socket server.
+  //3. handleReceiveMessage updates the messages state by appending the new message to the previous messages.
+  //4. socket.on("receive_message", handleReceiveMessage); sets up a listener for incoming messages.
+  //5. Even though useEffect runs only once, the event listener remains active and listens for incoming messages as long as the component is mounted.
+  //6. Whenever a new message is received, socket.on triggers handleReceiveMessage, which:
+          //Calls setMessages((prev) => [...prev, newMessage])
+          //React automatically re-renders the component with the updated messages state.
+          //This causes the new message to appear on the screen.
+
   useEffect(() => {
     const userId = localStorage.getItem("user_id") || "1";
     socket.emit("register", userId);
-    socket.on("receive_message", (newMessage) => {
+    const handleReceiveMessage = (newMessage: String) => {
       setMessages((prev) => [...prev, newMessage]);
-    });
-    return () => {
-      socket.off("receive_message");
     };
-  }, []);
+    socket.on("receive_message", handleReceiveMessage);
+    return () => {
+      socket.off("receive_message", handleReceiveMessage);
+    };
+  }, []); 
+  
 
   const sendMessage = useCallback((content: string, targetReceiverId: string) => {
     console.log("Data received at sendMessage function present on homepage: ", content)

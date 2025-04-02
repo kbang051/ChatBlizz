@@ -1,0 +1,76 @@
+import { useState, useEffect, useRef, useCallback } from 'react';
+import axios from 'axios';
+
+interface Message {
+    id: string;
+    sender_id: string;
+    message: string;
+    created_at: string;
+}
+
+const useInfiniteMessages = (userId1: string, userId2: string) => {
+    const [messages, setMessages] = useState<Message[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [hasMore, setHasMore] = useState(true);
+    const [cursor, setCursor] = useState<string | undefined>(undefined);
+    const loadingRef = useRef<HTMLDivElement>(null);
+    
+    // Initialize a ref to track if initial load is done
+    const initialLoadDone = useRef(false);
+
+    // Fetch messages
+    const loadMore = useCallback(async () => {
+        if (loading || !hasMore) return;
+
+        setLoading(true);
+        try {
+            const res = await axios.get("http://localhost:8000/api/v1/users/showConversation", {
+                params: { userId1, userId2, cursor, limit: 20 }
+            });
+            const newMessages = res.data;
+            // Only update cursor if we actually got messages
+            if (newMessages.length > 0) {
+                setCursor(newMessages[newMessages.length - 1].created_at);
+                setMessages(prev => [...prev, ...newMessages]);
+            }
+            // Set hasMore based on whether we got a full page of results
+            setHasMore(newMessages.length === 20);
+        } catch (error) {
+            console.error("An error occurred in the infinite scrolling hook:", error);
+            setHasMore(false);
+        } finally {
+            setLoading(false);
+        }
+    }, [userId1, userId2, cursor, hasMore, loading]);
+
+    // Observe last message to trigger `loadMore`
+    useEffect(() => {
+        const currentRef = loadingRef.current;
+        if (!currentRef) return;
+        const observer = new IntersectionObserver(entries => {
+            if (entries[0].isIntersecting && hasMore && !loading) {
+                loadMore();
+            }
+        }, { threshold: 0.1 });
+        observer.observe(currentRef);
+        return () => observer.disconnect();
+    }, [loadMore, hasMore, loading]);
+
+    // Initial fetch when user changes - only do this once
+    useEffect(() => {
+        // Reset everything when users change
+        setMessages([]);
+        setCursor(undefined);
+        setHasMore(true);
+        initialLoadDone.current = false;
+        // Perform initial load
+        if (!initialLoadDone.current) {
+            initialLoadDone.current = true;
+            loadMore();
+        }
+    }, [userId1, userId2]);
+
+    return { messages, loading, hasMore, loadingRef };
+};
+
+export default useInfiniteMessages;

@@ -4,3 +4,5 @@
 
 2. Fix scroll of the chatWindow - Whenever the messages cannot fit within the screen size, 
    the parent component increases its size, resulting in inconsistent CSS. 
+
+3. Fix the order in which messages are displayed. 
