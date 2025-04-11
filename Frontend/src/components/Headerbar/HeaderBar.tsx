@@ -1,302 +1,76 @@
-import React, { useState, useEffect, useRef } from "react";
-import axios from "axios";
-import { useNavigate, useLocation } from "react-router-dom";
-import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
-
-interface User {
-  id: string,
-  email: string;
-  username: string;
-}
-
-interface FriendRequestResponse {
-  user_id: string,
-  status: string,
-  created_at: string,
-  username: string 
-}
+import React from 'react'
 
 interface HeaderBarProps {
-  setRenderFetchUserDetail: React.Dispatch<React.SetStateAction<number>>
+  onMenuClick: () => void;
+  searchQuery: string;
+  onSearchChange: (query: string) => void;
 }
 
-const HeaderBar: React.FC <HeaderBarProps> = ({setRenderFetchUserDetail}) => {
-  const navigate = useNavigate()
-  const location = useLocation()
-  const [input, setInput] = useState<string>("");
-  const [users, setUsers] = useState<User[]>([]);
-  const [isSearchFocused, setIsSearchFocused] = useState<boolean>(false);
-  const [friendRequests, setFriendRequests] = useState<FriendRequestResponse[]>([])
-  const searchRef = useRef<HTMLDivElement>(null);
-  
-  const handleInputChange = async (e: string) => {
-    setInput(e);
-    if (e.trim() !== "") {
-      try {
-        const response = await axios.get(`http://localhost:8000/api/v1/users/fetchSearchResults/${encodeURIComponent(e)}`);
-        if (response.status === 200)
-          setUsers(response.data);
-      } catch (error) {
-        console.log("Unable to fetch searchResults from the backend:", error);
-      }
-    } else {
-      setUsers([]);
-    }
-  };
-
-  //could be sent from the parent component
-  const userSelectionNavigation = (friendId: string, username: string, email: string) => {
-    const query = new URLSearchParams({
-      searchId: friendId,
-      username: username,
-      email: email,
-    }).toString();
-    const newURL = `${location.pathname}?${query}`;
-    navigate(newURL);
-    setRenderFetchUserDetail((prev) => prev+1) // triggers a re-render in sidebar component i.e handling main content area
-  }
-
-  // Handle clicks outside the search area to close the dropdown
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
-        setIsSearchFocused(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
-
-  const fetchFriendRequests = async () => {
-    const userId = localStorage.getItem("user_id") || 1
-    try {
-      const request = await axios.get(`http://localhost:8000/api/v1/users/displayFriendRequests/${encodeURIComponent(userId)}`);
-      if (request.status === 200) {
-        setFriendRequests(request.data);
-      } else if (request.status === 201) {
-        console.log("No pending friend requests");
-      }
-    } catch (error) {
-      console.error("An error occured in fetchFriendRequests function", error);
-    }
-  }
-
-  const acceptFriendRequest = async (friend_id: string) => {
-    const user_id = localStorage.getItem("user_id") || 1
-    try {
-      const response = await axios.post("http://localhost:8000/api/v1/users/acceptFriendRequest", { user_id: user_id, friend_id: friend_id })
-      if (response.status === 200) {
-        console.log(`${user_id} and ${friend_id} are now friends`);
-        setRenderFetchUserDetail((prev) => prev + 1);
-        return;
-      } else {
-        console.log("Unable to accept friend request of user ", friend_id);
-        alert(`Unable to accept friend request of user ${friend_id}`);
-        return;
-      }
-    } catch (error) {
-      console.log("Unable to accept friend request of user ", friend_id);
-      alert("An error occurred while accepting the friend request. Please try again.");
-    }
-  }
-
-  useEffect(() => {
-    console.log("Updated Friend Requests:", friendRequests);
-  }, [friendRequests]); 
-
+const HeaderBar: React.FC<HeaderBarProps> = ({ onMenuClick, searchQuery, onSearchChange }) => {
   return (
-    <header className="bg-gray-900 text-white shadow-md relative">
-      <nav className="container mx-auto flex flex-wrap items-center justify-between py-3">
-        {/* Logo */}
-        <a href="https://flowbite.com" className="flex items-center space-x-3">
-          <img
-            src="https://flowbite.com/docs/images/logo.svg"
-            className="h-8"
-            alt="Flowbite Logo"
-          />
-          <span className="text-xl font-semibold">ChatBlizz</span>
-        </a>
-
-        {/* Search Bar */}
-        <div ref={searchRef} className="relative w-96 md:block">
-          <form onSubmit={(e) => e.preventDefault()}>
+    <header className="bg-white shadow-sm z-10">
+      <div className="flex items-center justify-between px-4 py-3 md:px-6">
+        {/* Left Section - Menu Button (mobile) and Logo */}
+        <div className="flex items-center">
+          <button 
+            onClick={onMenuClick}
+            className="mr-4 text-gray-500 hover:text-gray-600 md:hidden"
+            aria-label="Open menu"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          <h1 className="text-xl font-bold text-gray-800 hidden md:block">Logo</h1>
+        </div>
+        
+        {/* Center Section - Search Bar */}
+        <div className="flex-1 max-w-xl mx-4">
+          <div className="relative">
             <input
-              type="search"
-              className="w-full p-2 pl-10 border rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 text-white border-white"
-              placeholder="Search ChatBlizz"
-              value={input}
-              onChange={(e) => handleInputChange(e.target.value)}
-              onFocus={() => setIsSearchFocused(true)}
+              type="text"
+              placeholder="Search..."
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              value={searchQuery}
+              onChange={(e) => onSearchChange(e.target.value)}
             />
-            <span className="absolute inset-y-0 left-3 flex items-center text-gray-500">
-              <svg
-                className="w-5 h-5"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 20 20"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"
-                />
+            <div className="absolute left-3 top-2.5 text-gray-400">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
-            </span>
-            {input && (
-              <button
-                onClick={() => {
-                  setInput("");
-                  setUsers([]);
-                }}
-                className="absolute inset-y-0 right-2 flex items-center"
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M6 18L18 6M6 6l12 12"
-                  ></path>
-                </svg>
-              </button>
-            )}
-          </form>
-
-          {/* Search Results Dropdown */}
-          {isSearchFocused && input.trim() !== "" && (
-            <div className="absolute left-0 right-0 mt-1 bg-white dark:bg-gray-800 rounded-md shadow-lg z-50 max-h-80 overflow-y-auto">
-              {users.length > 0 ? (
-                <ul className="py-1">
-                  {users.map((user) => (
-                    <li
-                      key={user.email}
-                      className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer flex items-center"
-                      onClick={() => {
-                        userSelectionNavigation(
-                          user.id,
-                          user.username,
-                          user.email
-                        );
-                        setIsSearchFocused(false);
-                      }} // addition
-                    >
-                      <div className="flex-shrink-0 mr-3">
-                        <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400">
-                          {user.username.charAt(0).toUpperCase()}
-                        </div>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-900 dark:text-white">
-                          {user.username}
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                          {user.email}
-                        </p>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <div className="px-4 py-2 text-sm text-gray-500 dark:text-gray-400">
-                  No users found matching "{input}"
-                </div>
-              )}
             </div>
-          )}
+          </div>
         </div>
-
-        <div className="flex items-center space-x-7">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth="1.5"
-            stroke="currentColor"
-            className="size-6"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z"
-            />
-          </svg>
-
-          <Menu as="div" className="relative inline-flex text-left">
-            <MenuButton onClick={fetchFriendRequests}>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth="1.5"
-                stroke="currentColor"
-                className="size-6 cursor-pointer"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0"
-                />
-              </svg>
-            </MenuButton>
-
-            <MenuItems className="absolute right-0 mt-8 w-72 bg-white border rounded shadow-lg overflow-y-auto max-h-60 flex flex-col">
-              {friendRequests.map((item) => (
-                <MenuItem
-                  key={item.user_id} // Move the key prop here
-                  as="div"
-                  className="flex justify-between px-4 py-2 hover:bg-gray-100 dark:hover:bg-yellow-200 rounded-md"
-                >
-                  <span className="text-gray-800 font-medium hover:cursor-pointer hover:text-blue-700 hover:underline">
-                    {item.username}
-                  </span>
-
-                  {item.status === "pending" && (
-                    <div className="flex gap-1">
-                      <button
-                        className="bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold py-1 px-3 rounded-md transition duration-200 cursor-pointer"
-                        onClick={() => acceptFriendRequest(item.user_id)}
-                      >
-                        Accept
-                      </button>
-                      <button className="bg-red-700 hover:bg-red-800 text-white text-sm font-semibold py-1 px-3 rounded-md transition duration-200 cursor-pointer">
-                        Reject
-                      </button>
-                    </div>
-                  )}
-                </MenuItem>
-              ))}
-            </MenuItems>
-          </Menu>
-
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth="1.5"
-            stroke="currentColor"
-            className="size-6"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
-            />
-          </svg>
+        
+        {/* Right Section - Icons */}
+        <div className="flex items-center space-x-4">
+          <button className="p-2 text-gray-500 hover:text-gray-600 relative">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+            <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
+          </button>
+          
+          <button className="p-2 text-gray-500 hover:text-gray-600">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+          </button>
+          
+          <div className="relative">
+            <button className="flex items-center space-x-2 focus:outline-none">
+              <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-medium">
+                U
+              </div>
+              <span className="hidden md:inline text-gray-700">User</span>
+            </button>
+          </div>
         </div>
-      </nav>
+      </div>
     </header>
   );
 };
 
 export default HeaderBar;
+
 

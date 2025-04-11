@@ -9,7 +9,6 @@ import Group_Members from "./models/Group_Members.js";
 import Friends from "./models/Friends.js";
 import http from "http";
 import { Server } from "socket.io"
-import { initSockets } from "./socket/index.js";
 
 dotenv.config({
   path: "./env",
@@ -27,15 +26,6 @@ const pool = mysql.createPool({
   waitForConnections: true
 });
 
-const server = http.createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: "http://localhost:5173",
-    methods: ["GET", "POST"],
-    credentials: true,
-  }
-})
-
 const checkDatabaseConnection = async () => {
   try {
     await pool.query("SELECT 1");
@@ -45,11 +35,41 @@ const checkDatabaseConnection = async () => {
   }
 };
 
-initSockets(io) // Initialize sockets
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "http://localhost:5173",
+    methods: ["GET", "POST"],
+    credentials: true,
+  }
+})
+
+const getReceiverSocketId = (userId) => {
+  return userSocketMap[userId]
+}
+
+const userSocketMap = {} // {userId: socketId}
+
+io.on("connection", (socket) => {
+  console.log(`A user connected: ${socket.id}`);
+  const userId = socket.handshake.query.userId; // pending ---- needs extra security
+
+  socket.on("register", async () => {
+    if (userId) {
+      userSocketMap[userId] = socket.id;
+      console.log(`User ${userId} registered with socket ${socket.id}`);
+    }
+  },
+
+  socket.on("disconnect", () => {
+    console.log("A user disconnected", socket.id);
+    delete userSocketMap[userId];
+  }));
+});
 
 server.listen(PORT, () => {
   console.log(`Server is running at port: ${PORT}`);
-})
+});
 
 await checkDatabaseConnection()
 
@@ -68,4 +88,14 @@ await checkDatabaseConnection()
 
 // test
 
-export { pool }
+// try {
+//   const [pendingMessages] = await pool.query(`SELECT * FROM messages WHERE receiver_id = ? AND delivered = FALSE ORDER BY created_at DESC`, [userId]);
+//   pendingMessages.forEach((msg) => {
+//     socket.emit("receive_message", msg)
+//   });
+//   await pool.query(`UPDATE messages SET delivered = TRUE, delivered_at = NOW() WHERE receiver_id = ? AND delivered = FALSE`, [userId]);
+// } catch (error) {
+//   console.error("Failed to fetch pending messages:", error);
+// }
+
+export { pool, io, getReceiverSocketId }

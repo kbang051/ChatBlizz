@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getAllUsers, fetchSearchResults, sendFriendRequest, acceptFriendRequest, getUserDetail, displayFriendRequests, showConversation } from "../db/queries.js";
+import { saveMessage, getAllUsers, fetchSearchResults, sendFriendRequest, acceptFriendRequest, getUserDetail, displayFriendRequests, showConversation } from "../db/queries.js";
 
 const router = Router();
 
@@ -11,6 +11,7 @@ router.route("/showConversation").get(showConversation)
 
 router.route("/sendFriendRequest").post(sendFriendRequest);
 router.route("/acceptFriendRequest").post(acceptFriendRequest);
+router.route("/saveMessage").post(saveMessage);
 
 export default router;
 

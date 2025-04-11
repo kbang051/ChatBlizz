@@ -17,6 +17,7 @@ const Messages = async () => {
         CONSTRAINT fk_groupKey FOREIGN KEY (group_id) REFERENCES \`groups\`(id) ON DELETE CASCADE,
         CONSTRAINT fk_file FOREIGN KEY (file_id) REFERENCES file(id) ON DELETE SET NULL
       )`;
+      // added two more columns, delivered (boolean) and delivered_at (timestamp) directly using workbench
   try {
     const [messageTable] = await pool.query(query);
     console.log("Message table created or already exists:", messageTable);

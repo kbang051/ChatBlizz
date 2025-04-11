@@ -1,15 +1,54 @@
-import { pool } from "../index.js";
-import ApiResponse from "../utils/ApiResponse.js";
+import { pool, io, getReceiverSocketId } from "../index.js";
+import { v4 as uuidv4 } from 'uuid';
 
-const saveMessage = async (sender_id, receiver_id, content) => {
+const saveMessage = async (req, res) => {
   const query = `INSERT INTO messages 
-                 (id, sender_id, receiver_id, message)
-                 VALUES (UUID(), ?, ?, ?)`;
+                 (id, sender_id, receiver_id, message, delivered)
+                 VALUES (?, ?, ?, ?, FALSE)`;
   try {
-    const [insertMessage] = await pool.query(query, [sender_id, receiver_id, content]);
+    const { sender_id, receiver_id, content } = req.body;
+    if (!sender_id || !receiver_id || !content || content.trim() === "") {
+      console.log(`sender_id or receiver_id or content is missing --- sender_id: ${sender_id}, receiver_id: ${receiver_id}, content: ${content}`);
+      return res.status(400).json({message: `sender_id or receiver_id or content is missing --- sender_id: ${sender_id}, receiver_id: ${receiver_id}, content: ${content}`});
+    }
+    //1. Store message in DB
+    const messageId = uuidv4();
+    const [insertMessage] = await pool.query(query, [messageId, sender_id, receiver_id, content.trim()]);
     console.log("Message inserted successfully in the message table");
+
+    //2. Attempt real-time delivery
+    const receiverSocketId = getReceiverSocketId(receiver_id);
+    
+    //person is offline
+    if (!receiverSocketId)
+      console.log("The receiver is offline so maybe we are unable to read receiverSocketId in saveMessage controller or there is some problem in the controller")
+    
+    const messageToSend = {
+      messageId,
+      sender_id,
+      receiver_id,
+      message: content,
+      delivered: true,
+      created_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
+    };
+
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("receive_message", messageToSend)
+      console.log("Message sent to the receiver successfully from backend as the user is online: ", content);
+      await pool.query(`UPDATE messages SET delivered = TRUE, delivered_at = CURRENT_TIMESTAMP WHERE receiver_id = ? AND delivered = FALSE`, [receiver_id]);
+    } // Mark as delivered
+    
+    // const Message = {
+    //   id: receiver_id,
+    //   sender_id: sender_id,
+    //   message: content,
+    //   created_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
+    // }
+
+    return res.status(200).send(messageToSend)
   } catch (error) {
     console.error("Unable to insert message: ", error);
+    return res.status(500).json({message: 'Failed to save message'});
   }
 };
 
@@ -179,33 +218,44 @@ const displayFriendRequests = async (req, res) => {
 }
 
 const showConversation = async (req, res) => {
-  // userId1: cbtkFasu9yVa2VI6VFlDREoiBvi2, userId2: nazVGdU3B3UCuz1c3HvqPBc6H722, cursor: undefined, limit: 20
-  const { userId1, userId2, cursor, limit = 15 } = req.query
-  console.log(`Request received at showConversation -- userId1: ${userId1}, userId2: ${userId2}, cursor: ${cursor}, limit: ${limit}`)
+  const { userId1, userId2, limit = 15 } = req.query;
+  console.log(`Request received at showConversation -- userId1: ${userId1}, userId2: ${userId2}, limit: ${limit}`);
   if (!userId1 || !userId2) {
     return res.status(400).json({ message: 'Both userId1 and userId2 are required' });
   }
-  const query = ` SELECT * FROM messages 
-                  WHERE ((sender_id = ? AND receiver_id = ?) 
-                  OR (sender_id = ? AND receiver_id = ?))
-                  ${cursor ? "AND created_at < ?" : ""}
-                  ORDER BY created_at DESC
-                  LIMIT ? `;
-  
-  const params = cursor ? [userId1, userId2, userId2, userId1, cursor, parseInt(limit)] : [userId1, userId2, userId2, userId1, parseInt(limit)];
+  const fetchQuery = 
+    `SELECT * FROM messages 
+    WHERE ((sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?))
+    ORDER BY created_at DESC`;
+
+  const updateQuery =  `UPDATE messages 
+                        SET delivered = TRUE, delivered_at = CURRENT_TIMESTAMP 
+                        WHERE receiver_id = ? 
+                        AND sender_id = ? 
+                        AND delivered = FALSE`;
+
+  const params = [userId1, userId2, userId2, userId1];
 
   try {
-    const [messages] = await pool.query(query, params);
-    console.log("Response sent by showConversations: ", messages)
+    const [messages] = await pool.query(fetchQuery, params);
+    console.log("Response sent by showConversation: ", messages);
+
     if (messages.length === 0) {
-      return res.status(200).json([]); 
+      return res.status(200).json([]);
     }
-    return res.status(200).json(messages);
+    // Send response first
+    res.status(200).send(messages);
+
+    // Update delivered status in the database
+    await pool.query(updateQuery, [userId1, userId2]);
+
   } catch (error) {
     console.error("Database error:", error);
-    return res.status(500).json({ message: "Internal server error" });
+    if (!res.headersSent) {
+      return res.status(500).json({ message: "Internal server error" });
+    }
   }
-}
+};
 
 export { saveMessage, getAllUsers, fetchSearchResults, getUserDetail, sendFriendRequest, acceptFriendRequest, displayFriendRequests, showConversation };
 
