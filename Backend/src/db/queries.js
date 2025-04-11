@@ -24,7 +24,7 @@ const saveMessage = async (req, res) => {
       console.log("The receiver is offline so maybe we are unable to read receiverSocketId in saveMessage controller or there is some problem in the controller")
     
     const messageToSend = {
-      messageId,
+      id: messageId,
       sender_id,
       receiver_id,
       message: content,
@@ -37,13 +37,6 @@ const saveMessage = async (req, res) => {
       console.log("Message sent to the receiver successfully from backend as the user is online: ", content);
       await pool.query(`UPDATE messages SET delivered = TRUE, delivered_at = CURRENT_TIMESTAMP WHERE receiver_id = ? AND delivered = FALSE`, [receiver_id]);
     } // Mark as delivered
-    
-    // const Message = {
-    //   id: receiver_id,
-    //   sender_id: sender_id,
-    //   message: content,
-    //   created_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
-    // }
 
     return res.status(200).send(messageToSend)
   } catch (error) {
@@ -226,7 +219,7 @@ const showConversation = async (req, res) => {
   const fetchQuery = 
     `SELECT * FROM messages 
     WHERE ((sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?))
-    ORDER BY created_at DESC`;
+    ORDER BY created_at ASC`;
 
   const updateQuery =  `UPDATE messages 
                         SET delivered = TRUE, delivered_at = CURRENT_TIMESTAMP 

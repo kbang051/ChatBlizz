@@ -10,7 +10,7 @@ interface Users {
 }
 
 interface Message {
-    messageId: string;
+    id: string;
     sender_id: string;
     receiver_id: string;
     message: string;
@@ -89,36 +89,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
         get().getMessages();         
     },
 
-    // sendMessage: async (content: string) => {
-    //     const { selectedUser, messages } = get()
-    //     const userId = useAuthStore.getState().userId;
-    //     if (!userId || !selectedUser || content.trim() === "" || !content)
-    //         return;
-    //     try {
-    //         const response = await axios.post(
-    //           "http://localhost:8000/api/v1/users/saveMessage",
-    //           { sender_id: userId, receiver_id: selectedUser, content: content } 
-    //         );
-    //         console.log("Message sent:", response.data);
-    //         set({messages: [...messages, response.data]});
-    //     } catch (error: any) {
-    //         toast.error("Unable to send message", error.response.data.message);
-    //     }
-    // },
-
-    // subscribeToMessages: () => {
-    //     const { selectedUser } = get();
-    //     if (!selectedUser) return;
-    //     const socket = useAuthStore.getState().socket;
-    //     socket.on("receive_message", (newMessage: Message) => {
-    //         console.log("New message received without set:", newMessage);
-    //         const isMessageFromSelectedUser = newMessage.sender_id === selectedUser;
-    //         if (!isMessageFromSelectedUser) return;
-    //         set({messages: [...get().messages, newMessage]});
-    //         console.log("New message received with set:", newMessage);
-    //     })
-    // },
-
     sendMessage: async (content: string) => {
         const { selectedUser, messages } = get()
         const userId = useAuthStore.getState().userId;
@@ -129,49 +99,30 @@ export const useChatStore = create<ChatState>((set, get) => ({
               "http://localhost:8000/api/v1/users/saveMessage",
               { sender_id: userId, receiver_id: selectedUser, content: content } 
             );
-            
-            // Instead of just appending, ensure the message format is consistent
-            const newMessage: Message = {
-                messageId: response.data.messageId,
-                sender_id: userId,
-                receiver_id: selectedUser,
-                message: content,
-                delivered: response.data.delivered || false,
-                created_at: response.data.created_at || new Date().toISOString()
-            };
-            
-            set({ messages: [...messages, newMessage] });
+            console.log("Message sent:", response.data);
+            const alreadyExists = messages.some((message) => message.id === response.data.id)
+            if (!alreadyExists)
+                set({messages: [...messages, response.data]});
+            console.log("Updated messages after sending new message:", get().messages);
         } catch (error: any) {
-            toast.error("Unable to send message", error.response?.data?.message || "Unknown error");
+            toast.error("Unable to send message", error.response.data.message);
         }
     },
 
-    // Modified message receiver function
     subscribeToMessages: () => {
         const { selectedUser } = get();
         if (!selectedUser) return;
         const socket = useAuthStore.getState().socket;
-        
         socket.on("receive_message", (newMessage: Message) => {
-            console.log("New message received:", newMessage);
-            
-            // Check if message is from or to the selected user
-            const isRelevantMessage = 
-                newMessage.sender_id === selectedUser || 
-                (newMessage.receiver_id === selectedUser && newMessage.sender_id === useAuthStore.getState().userId);
-                
-            if (!isRelevantMessage) return;
-            
-            // Ensure the message has a consistent format with your existing messages
-            const formattedMessage: Message = {
-                ...newMessage,
-                created_at: newMessage.created_at || new Date().toISOString()
-            };
-            
-            set(state => ({
-                messages: [...state.messages, formattedMessage]
-            }));
-        });
+            console.log("New message received without set:", newMessage);
+            const isMessageFromSelectedUser = newMessage.sender_id === selectedUser;
+            if (!isMessageFromSelectedUser) 
+                return;
+            const alreadyExists = get().messages.some((message) => message.id === newMessage.id);
+            if (!alreadyExists)
+                set({messages: [...get().messages, newMessage]});
+            console.log("New message received with set:", newMessage);
+        })
     },
 
     unsubscribeFromMessages: () => {
