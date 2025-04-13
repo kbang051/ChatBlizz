@@ -101,8 +101,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
             );
             console.log("Message sent:", response.data);
             const alreadyExists = messages.some((message) => message.id === response.data.id)
-            if (!alreadyExists)
+            if (!alreadyExists) {
+                console.log("Data received from sendMessage function:", response.data);
                 set({messages: [...messages, response.data]});
+                console.log("Message appended by sendMessage function")
+            }
             console.log("Updated messages after sending new message:", get().messages);
         } catch (error: any) {
             toast.error("Unable to send message", error.response.data.message);
@@ -119,8 +122,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
             if (!isMessageFromSelectedUser) 
                 return;
             const alreadyExists = get().messages.some((message) => message.id === newMessage.id);
-            if (!alreadyExists)
+            if (!alreadyExists) {
                 set({messages: [...get().messages, newMessage]});
+                console.log("Message appended by subscribeToMessages function")
+            }
             console.log("New message received with set:", newMessage);
         })
     },

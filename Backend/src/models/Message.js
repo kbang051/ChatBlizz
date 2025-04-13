@@ -18,7 +18,9 @@ const Messages = async () => {
         CONSTRAINT fk_file FOREIGN KEY (file_id) REFERENCES file(id) ON DELETE SET NULL
       )`;
       // added two more columns, delivered (boolean) and delivered_at (timestamp) directly using workbench
-  try {
+      // foreign key constraint, fk_file has been dropped for the sake of simplicity in the initial stage 
+      // added one more column, fileName varchar(255) directly using workbench
+      try {
     const [messageTable] = await pool.query(query);
     console.log("Message table created or already exists:", messageTable);
   } catch (error) {

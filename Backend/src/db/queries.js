@@ -1,10 +1,76 @@
-import { pool, io, getReceiverSocketId } from "../index.js";
 import { v4 as uuidv4 } from 'uuid';
+import { fileTypeFromBuffer } from 'file-type';
+import { pool, io, getReceiverSocketId } from "../index.js";
+import { uploadToS3 } from '../utils/s3Upload.js';
+
+const fileUpload = async (req, res) => {
+  const file = req.file;
+  const { receiver_id, sender_id } = req.body;
+  if (!file || !sender_id || !receiver_id) {
+    console.log("File or sender_id or receiver_id is missing", `file - ${file}`, `sender_id - ${sender_id}`, `receiver_id - ${receiver_id}`);
+    return res.status(400).json({ message: "Missing file or sender_id or receiver_id" });
+  }
+  const FileTableQuery = `INSERT INTO file (id, user_id, receiver_id, file_name, file_url, uploaded_at) 
+                          VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`;
+  
+  const MessageTableQuery = `INSERT INTO messages (id, sender_id, receiver_id, file_id, message, fileName, message_type, created_at) 
+                             VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`;
+  try {
+  
+  //     Frontend sends a form-data POST request with a file under file.
+  //     multer.memoryStorage() stores that file in RAM.
+  //     req.file holds:
+  //     Metadata like originalname, mimetype, size
+  //     The actual file in buffer
+  //     You send buffer to AWS S3 using the AWS SDK.
+  //     You get a public URL or object key from S3 in return.
+
+    const fileType = await fileTypeFromBuffer(file.buffer); //{ext: 'png', mime: 'image/png'}
+    if (!fileType) 
+      return res.status(400).json({ message: "Unsupported or unknown file type" });
+    console.log("File Type: ", fileType);
+    const fileUrl = await uploadToS3(file.buffer, fileType.mime, fileType.ext);
+    console.log("File URL: ", fileUrl);
+
+    const fileId = uuidv4();
+    const messageId = uuidv4(); 
+
+    const [insertFileInFileTable] = await pool.query(FileTableQuery, [fileId, sender_id, receiver_id, file.originalname, fileUrl]); 
+    console.log("File inserted successfully in the file table");
+    const [insertMessageInMessageTable] = await pool.query(MessageTableQuery, [messageId, sender_id, receiver_id, fileId, fileUrl, file.originalname, "file"])
+    console.log("Messgae successfully inserted in the message table");
+
+    // Attempt real-time delivery
+    const receiverSocketId = getReceiverSocketId(receiver_id);
+    if (!receiverSocketId) 
+      console.log("The receiver is offline so maybe we are unable to read receiverSocketId in saveMessage controller or there is some problem in the controller")
+
+    const messageToSend = {
+      id: messageId,
+      sender_id,
+      receiver_id,
+      message: fileUrl,
+      message_type: "file", //newly added
+      fileName: file.originalname, //newly added
+      delivered: true,
+      created_at: new Date().toISOString()
+    };
+
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("receive_message", messageToSend)
+      console.log("Message sent to the receiver successfully: ", messageToSend);
+      await pool.query(`UPDATE messages SET delivered = TRUE, delivered_at = CURRENT_TIMESTAMP WHERE receiver_id = ? AND delivered = FALSE`, [receiver_id]);
+    } // Mark as delivered
+
+    return res.status(200).send(messageToSend)
+  } catch (error) {
+    console.error("Failed to upload or save file: ", error);
+    return res.status(500).json({message: 'Failed to upload or save file'});
+  }
+}
 
 const saveMessage = async (req, res) => {
-  const query = `INSERT INTO messages 
-                 (id, sender_id, receiver_id, message, delivered)
-                 VALUES (?, ?, ?, ?, FALSE)`;
+  const query = `INSERT INTO messages (id, sender_id, receiver_id, message, delivered) VALUES (?, ?, ?, ?, FALSE)`;
   try {
     const { sender_id, receiver_id, content } = req.body;
     if (!sender_id || !receiver_id || !content || content.trim() === "") {
@@ -28,8 +94,10 @@ const saveMessage = async (req, res) => {
       sender_id,
       receiver_id,
       message: content,
+      file_url: null, //newly added
+      message_type: "text", //newly added
       delivered: true,
-      created_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
+      created_at: new Date().toISOString()
     };
 
     if (receiverSocketId) {
@@ -250,7 +318,7 @@ const showConversation = async (req, res) => {
   }
 };
 
-export { saveMessage, getAllUsers, fetchSearchResults, getUserDetail, sendFriendRequest, acceptFriendRequest, displayFriendRequests, showConversation };
+export { fileUpload, saveMessage, getAllUsers, fetchSearchResults, getUserDetail, sendFriendRequest, acceptFriendRequest, displayFriendRequests, showConversation };
 
 
 // {
