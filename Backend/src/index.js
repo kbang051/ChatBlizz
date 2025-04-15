@@ -86,16 +86,4 @@ await checkDatabaseConnection()
 // await Messages()
 // await Friends()
 
-// test
-
-// try {
-//   const [pendingMessages] = await pool.query(`SELECT * FROM messages WHERE receiver_id = ? AND delivered = FALSE ORDER BY created_at DESC`, [userId]);
-//   pendingMessages.forEach((msg) => {
-//     socket.emit("receive_message", msg)
-//   });
-//   await pool.query(`UPDATE messages SET delivered = TRUE, delivered_at = NOW() WHERE receiver_id = ? AND delivered = FALSE`, [userId]);
-// } catch (error) {
-//   console.error("Failed to fetch pending messages:", error);
-// }
-
 export { pool, io, getReceiverSocketId }

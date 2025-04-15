@@ -14,6 +14,8 @@ interface Message {
     sender_id: string;
     receiver_id: string;
     message: string;
+    message_type: string | null; //alwaus use "file" to distinguish between files and text messages
+    fileName: string | null; //always present with "file" but not with text messages
     delivered: boolean;
     created_at: string;
 }
@@ -25,12 +27,15 @@ interface ChatState {
     isUsersLoading: boolean,
     isMessagesLoading: boolean, 
     openChat: boolean,
+    openFileUploadSection: boolean,
     getUsers: () => Promise<void>,
     setSelectedUser: (searchId: string) => void,
     getMessages: () => Promise<void>,
     sendMessage: (content: string) => Promise<void>,
     subscribeToMessages: () => void,
     unsubscribeFromMessages: () => void,
+    setOpenFileUploadedSectionTrue: () => void,
+    setOpenFileUploadedSectionFalse: () => void,
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
@@ -40,7 +45,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
     isUsersLoading: false,
     isMessagesLoading: false,
     openChat: false, // This state can be used to control the visibility of the chat interface and friend requests
-    
+    openFileUploadSection: false,
+
     getUsers: async () => {
         const { userId } = useAuthStore.getState();
         set({ isUsersLoading: true });
@@ -83,10 +89,19 @@ export const useChatStore = create<ChatState>((set, get) => ({
     setSelectedUser: (searchId: string) => {
         set({ 
             selectedUser: searchId,  
-            openChat: true,          
+            openChat: true,   
+            openFileUploadSection: false,       
             messages: []             
         });
         get().getMessages();         
+    },
+
+    setOpenFileUploadedSectionTrue: () => {
+        set({ openFileUploadSection: true });
+    },
+
+    setOpenFileUploadedSectionFalse: () => {
+        set({ openFileUploadSection: false });
     },
 
     sendMessage: async (content: string) => {

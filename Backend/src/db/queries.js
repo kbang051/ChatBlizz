@@ -16,7 +16,6 @@ const fileUpload = async (req, res) => {
   const MessageTableQuery = `INSERT INTO messages (id, sender_id, receiver_id, file_id, message, fileName, message_type, created_at) 
                              VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`;
   try {
-  
   //     Frontend sends a form-data POST request with a file under file.
   //     multer.memoryStorage() stores that file in RAM.
   //     req.file holds:
@@ -24,7 +23,6 @@ const fileUpload = async (req, res) => {
   //     The actual file in buffer
   //     You send buffer to AWS S3 using the AWS SDK.
   //     You get a public URL or object key from S3 in return.
-
     const fileType = await fileTypeFromBuffer(file.buffer); //{ext: 'png', mime: 'image/png'}
     if (!fileType) 
       return res.status(400).json({ message: "Unsupported or unknown file type" });
@@ -94,8 +92,8 @@ const saveMessage = async (req, res) => {
       sender_id,
       receiver_id,
       message: content,
-      file_url: null, //newly added
       message_type: "text", //newly added
+      fileName: null, //newly added
       delivered: true,
       created_at: new Date().toISOString()
     };
