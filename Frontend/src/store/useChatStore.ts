@@ -22,15 +22,16 @@ interface Message {
 
 interface ChatState {
     messages: Message[],
+    getMessages: () => Promise<void>,
+    setMessages: (newMessage: Message[]) => void,
     users: Users[],
+    getUsers: () => Promise<void>,
     selectedUser: string | null,
+    setSelectedUser: (searchId: string) => void,
     isUsersLoading: boolean,
     isMessagesLoading: boolean, 
     openChat: boolean,
     openFileUploadSection: boolean,
-    getUsers: () => Promise<void>,
-    setSelectedUser: (searchId: string) => void,
-    getMessages: () => Promise<void>,
     sendMessage: (content: string) => Promise<void>,
     subscribeToMessages: () => void,
     unsubscribeFromMessages: () => void,
@@ -64,6 +65,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     },
 
     getMessages: async () => {
+        console.log("getMessage is getting rendered")
         set({ isMessagesLoading: true });
         try {
             const userId = useAuthStore.getState().userId;
@@ -84,6 +86,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
         } finally {
             set({ isMessagesLoading: false });
         }
+    },
+
+    setMessages: (newMessage: Message[]) => {
+        console.log("Messages have been reset by setMessage method")
+        set({messages: [...get().messages, ...newMessage]});
     },
 
     setSelectedUser: (searchId: string) => {

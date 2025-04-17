@@ -3,31 +3,6 @@ import { useChatStore } from '../../store/useChatStore.ts'
 import { useAuthStore } from '../../store/useAuthStore.ts'
 import { formatDate, formatTime } from '../../utils/DataFormatFunctions.ts'
 import FileUploadComponent from './FileUploadComponent.tsx'
-//import useFileUpload from '../../hooks/useFileUpload.ts'
-
-// const FileUploadSection = () => {
-//   const fileInputRef = useRef<HTMLInputElement | null>(null);
-//   return (
-//     <>
-//       <div className="flex-1 p-6 bg-gray-950 overflow-y-auto">
-//         <div className="border-dashed border-2 border-gray-700 rounded-lg h-full flex flex-col items-center justify-center">
-//           <h2 className="text-gray-400">File Upload Section</h2>
-//           <p className="text-gray-400">
-//             Drag and drop your files here or click to upload.
-//           </p>
-//           <button
-//             className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors mt-4 cursor-pointer"
-//             onClick={() => fileInputRef.current?.click()}
-//           >
-//             Upload File
-//           </button>
-//           <input type="file" className="hidden" ref={fileInputRef} />
-//           {/* Hidden file input */}
-//         </div>
-//       </div>
-//     </>
-//   );
-// };
 
 const ChatContainer = () => {
   const {
@@ -47,8 +22,6 @@ const ChatContainer = () => {
   const { userId } = useAuthStore();
   const [text, setText] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  //const fileInputRef = useRef<HTMLInputElement | null>(null);
-  //const { handleFileChange, handleUpload, previewUrl, uploadProgress, uploadStatus } = useFileUpload();
 
   //Group messages by date
   const groupedMessages = useMemo(() => {
@@ -149,7 +122,6 @@ const ChatContainer = () => {
                 {/* + Icon */}
                 <div
                   className="p-2 rounded hover:bg-gray-900 cursor-pointer flex items-center justify-center"
-                  // onClick={() => fileInputRef.current?.click()}
                   onClick={() => setOpenFileUploadedSectionTrue()} // OpenChat remains same, openFileUploadSection controls the display between file upload and chat area.
                 >
                   <svg
@@ -166,20 +138,6 @@ const ChatContainer = () => {
                       d="M12 4.5v15m7.5-7.5h-15"
                     />
                   </svg>
-
-                  {/* Hidden file input */}
-                  {/* <input
-                    type="file"
-                    accept="image/*"
-                    ref={fileInputRef}
-                    onChange={(e) => {
-                      if (e.target.files && e.target.files[0]) {
-                        handleFileChange(e.target.files[0]);
-                        handleUpload(); // optional: upload immediately or use a separate button
-                      }
-                    }}
-                    style={{ display: "none" }}
-                  /> */}
                 </div>
 
                 {/* Message Input */}

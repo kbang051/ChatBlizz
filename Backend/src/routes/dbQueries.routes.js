@@ -24,6 +24,6 @@ router.route("/showConversation").get(showConversation);
 router.route("/sendFriendRequest").post(sendFriendRequest);
 router.route("/acceptFriendRequest").post(acceptFriendRequest);
 router.route("/saveMessage").post(saveMessage);
-router.route("/fileUpload").post(upload.single("file"), fileUpload);
+router.route("/fileUpload").post(upload.array("files"), fileUpload);
 
 export default router;
