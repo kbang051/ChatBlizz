@@ -73,6 +73,8 @@ server.listen(PORT, () => {
 
 await checkDatabaseConnection()
 
+export { pool, io, getReceiverSocketId }
+
 // app.listen(PORT, () => {
 //   console.log(`Server is running at port: ${PORT}`);
 // });
@@ -86,4 +88,3 @@ await checkDatabaseConnection()
 // await Messages()
 // await Friends()
 
-export { pool, io, getReceiverSocketId }

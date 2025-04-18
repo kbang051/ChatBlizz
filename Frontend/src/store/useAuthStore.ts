@@ -11,6 +11,7 @@ interface AuthState {
     authenticated: boolean;
     onlineUsers: string[]; // Array of online user IDs --- pending
     userId: string | null;
+    authenticationToken: string | null;
     login: (email: string, password: string) => Promise<void>;
     connectSocket: () => void;
     disconnectSocket: () => void;
@@ -24,12 +25,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     socket: null, 
     authenticated: false,
     userId: null,
+    authenticationToken: null, //used in axios requests for user request validation
 
     login: async (email: string, password: string) => {
         set({ isLoading: true, error: null });
         try {
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
-            set({ user: userCredential.user, isLoading: false, authenticated: true, userId: userCredential.user.uid });
+            set({ 
+                user: userCredential.user, 
+                isLoading: false, 
+                authenticated: true, 
+                userId: userCredential.user.uid,
+                authenticationToken: await auth.currentUser?.getIdToken(),
+            });
             localStorage.setItem("user_id", userCredential.user.uid)
             get().connectSocket();
         } catch (error: any) {

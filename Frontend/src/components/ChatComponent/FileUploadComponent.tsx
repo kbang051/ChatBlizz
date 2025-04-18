@@ -16,7 +16,7 @@ const FileUploadComponent = () => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [files, setFiles] = useState<UploadFile[]>([]);
   console.log("FileUploadComponent is getting rendered");
-  const { userId } = useAuthStore();
+  const { userId, authenticationToken } = useAuthStore();
   const { selectedUser, setOpenFileUploadedSectionFalse, messages, setMessages } = useChatStore();
 
   const uploadAllFiles = async () => {
@@ -37,7 +37,10 @@ const FileUploadComponent = () => {
         "http://localhost:8000/api/v1/users/fileUpload",
         formData,
         {
-          headers: { "Content-Type": "multipart/form-data" },
+          headers: { 
+            Authorization: `Bearer ${authenticationToken}`,
+            "Content-Type": "multipart/form-data" 
+          },
           onUploadProgress: (ProgressEvent) => {
             const percent = ProgressEvent.total ? Math.round((ProgressEvent.loaded * 100) / ProgressEvent.total) : 0;
             // Update progress for all files simultaneously

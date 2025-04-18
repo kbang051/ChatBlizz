@@ -49,11 +49,15 @@ export const useChatStore = create<ChatState>((set, get) => ({
     openFileUploadSection: false,
 
     getUsers: async () => {
-        const { userId } = useAuthStore.getState();
+        const { userId, authenticationToken } = useAuthStore.getState();
         set({ isUsersLoading: true });
         try {
             if (!userId) throw new Error("User ID is null or undefined");
-            const response = await axios.get(`http://localhost:8000/api/v1/users/getAllUsers/${encodeURIComponent(userId)}`);
+            const response = await axios.get(`http://localhost:8000/api/v1/users/getAllUsers/${encodeURIComponent(userId)}`,
+              {
+                headers: { Authorization: `Bearer ${authenticationToken}` },
+              }
+            );
             set({ users: response.data});
             toast.success("Users loaded successfully");
         } catch (error) {
@@ -68,7 +72,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         console.log("getMessage is getting rendered")
         set({ isMessagesLoading: true });
         try {
-            const userId = useAuthStore.getState().userId;
+            const { userId, authenticationToken } = useAuthStore.getState();
             const searchId = get().selectedUser;
             const openChat = get().openChat;
             if (!userId || !searchId || !openChat) {
@@ -77,7 +81,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
             }
             const response = await axios.get(
               `http://localhost:8000/api/v1/users/showConversation`,
-              { params: { userId1: userId, userId2: searchId, limit: 15 } }
+              { 
+                headers: { Authorization: `Bearer ${authenticationToken}` },
+                params: { userId1: userId, userId2: searchId, limit: 15 } 
+              }
             );
             set({ messages: response.data });
         } catch (error) {
@@ -113,13 +120,19 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     sendMessage: async (content: string) => {
         const { selectedUser, messages } = get()
-        const userId = useAuthStore.getState().userId;
+        const { userId, authenticationToken } = useAuthStore.getState();
         if (!userId || !selectedUser || content.trim() === "" || !content)
             return;
         try {
-            const response = await axios.post(
-              "http://localhost:8000/api/v1/users/saveMessage",
-              { sender_id: userId, receiver_id: selectedUser, content: content } 
+            const response = await axios.post("http://localhost:8000/api/v1/users/saveMessage",
+              {
+                sender_id: userId,
+                receiver_id: selectedUser,
+                content: content,
+              },
+              {
+                headers: { Authorization: `Bearer ${authenticationToken}` },
+              }
             );
             console.log("Message sent:", response.data);
             const alreadyExists = messages.some((message) => message.id === response.data.id)
