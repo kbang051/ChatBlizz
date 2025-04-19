@@ -49,8 +49,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     },
 
     connectSocket: () => {
-        const { userId } = get();
-        const socket = io("http://localhost:8000", { query: { userId: userId } }); 
+        const { userId, authenticationToken } = get();
+        const socket = io("http://localhost:8000", {
+          auth: { token: authenticationToken },
+        }); 
         socket.connect();
         set({ socket: socket });
         if (userId) 
@@ -62,4 +64,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             get().socket.disconnect();
     },
 }));
+
+
 

@@ -9,6 +9,8 @@ import Group_Members from "./models/Group_Members.js";
 import Friends from "./models/Friends.js";
 import http from "http";
 import { Server } from "socket.io"
+import socketAuth from "./middlewares/verifySocketConnection.middleware.js";
+import connectUser from "./socket/connectUser.js";
 
 dotenv.config({
   path: "./env",
@@ -50,22 +52,8 @@ const getReceiverSocketId = (userId) => {
 
 const userSocketMap = {} // {userId: socketId}
 
-io.on("connection", (socket) => {
-  console.log(`A user connected: ${socket.id}`);
-  const userId = socket.handshake.query.userId; // pending ---- needs extra security
-
-  socket.on("register", async () => {
-    if (userId) {
-      userSocketMap[userId] = socket.id;
-      console.log(`User ${userId} registered with socket ${socket.id}`);
-    }
-  },
-
-  socket.on("disconnect", () => {
-    console.log("A user disconnected", socket.id);
-    delete userSocketMap[userId];
-  }));
-});
+io.use(socketAuth);
+io.on("connection", connectUser);
 
 server.listen(PORT, () => {
   console.log(`Server is running at port: ${PORT}`);
@@ -73,7 +61,7 @@ server.listen(PORT, () => {
 
 await checkDatabaseConnection()
 
-export { pool, io, getReceiverSocketId }
+export { pool, io, getReceiverSocketId, userSocketMap }
 
 // app.listen(PORT, () => {
 //   console.log(`Server is running at port: ${PORT}`);

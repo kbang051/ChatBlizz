@@ -1,6 +1,6 @@
 import { Router } from "express";
 import upload from "../middlewares/multer.middleware.js";
-import verifyToken from "../middlewares/verifyToken.js";
+import verifyToken from "../middlewares/verifyToken.middleware.js";
 
 import {
   fileUpload,
