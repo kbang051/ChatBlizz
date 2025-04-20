@@ -14,18 +14,19 @@ const Messages = async () => {
         
         CONSTRAINT fk_sender FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
         CONSTRAINT fk_receiver FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE,
-        CONSTRAINT fk_groupKey FOREIGN KEY (group_id) REFERENCES \`groups\`(id) ON DELETE CASCADE,
-        CONSTRAINT fk_file FOREIGN KEY (file_id) REFERENCES file(id) ON DELETE SET NULL
+        CONSTRAINT fk_groupKey FOREIGN KEY (group_id) REFERENCES \`groups\`(id) ON DELETE CASCADE
       )`;
       // added two more columns, delivered (boolean) and delivered_at (timestamp) directly using workbench
       // foreign key constraint, fk_file has been dropped for the sake of simplicity in the initial stage 
       // added one more column, fileName varchar(255) directly using workbench
       try {
     const [messageTable] = await pool.query(query);
-    console.log("Message table created or already exists:", messageTable);
+    console.log("Message table created or already exists:");
   } catch (error) {
     console.error("Error creating messages table: ", error);
   }
 };
 
 export default Messages;
+
+

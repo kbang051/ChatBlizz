@@ -13,7 +13,7 @@ const Friends = async () => {
 
     try {
         const [friendsTable] = await pool.query(query);
-        console.log("Friends table created or already exists:", friendsTable);
+        console.log("Friends table created or already exists:");
     } catch (error) {
         console.error("Error creating friends table:", error);
     }

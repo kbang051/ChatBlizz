@@ -1,16 +1,12 @@
-import { app } from "./app.js";
 import dotenv from "dotenv";
 import mysql from 'mysql2/promise';
-import User from "./models/Users.js";
-import Messages from "./models/Message.js";
-import File from "./models/File.js";
-import Groups from "./models/Group.js";
-import Group_Members from "./models/Group_Members.js";
-import Friends from "./models/Friends.js";
 import http from "http";
-import { Server } from "socket.io"
+import checkTables from "./utils/SQLTableCreation.js";
 import socketAuth from "./middlewares/verifySocketConnection.middleware.js";
 import connectUser from "./socket/connectUser.js";
+import sequelize from "./db/sequelize.js";
+import { Server } from "socket.io"
+import { app } from "./app.js";
 
 dotenv.config({
   path: "./env",
@@ -55,24 +51,22 @@ const userSocketMap = {} // {userId: socketId}
 io.use(socketAuth);
 io.on("connection", connectUser);
 
-server.listen(PORT, () => {
-  console.log(`Server is running at port: ${PORT}`);
-});
+sequelize
+  .authenticate()
+  .then(async () => {
+    console.log("Connection has been established successfully with sequelize");
+    await checkTables();
+    server.listen(PORT, () => {
+      console.log(`Server is running at port: ${PORT}`);
+    });
+  })
+  .catch((error) => {
+    console.log("Failed to form connection with MySQL database", error);
+    process.exit(1);
+  });
 
 await checkDatabaseConnection()
 
 export { pool, io, getReceiverSocketId, userSocketMap }
 
-// app.listen(PORT, () => {
-//   console.log(`Server is running at port: ${PORT}`);
-// });
-
-// Call the following functions to create respective tables
-
-// await User()
-// await File()
-// await Groups()
-// await Group_Members()
-// await Messages()
-// await Friends()
 

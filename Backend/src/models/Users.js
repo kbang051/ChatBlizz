@@ -12,7 +12,7 @@ const User = async () => {
     lastupdate TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP  )`;
   try {
     const [userTable] = await pool.query(query); // Executes the query
-    console.log("User table created or already exists:", userTable);
+    console.log("User table created or already exists:");
   } catch (error) {
     console.error("Error creating user table:", error);
   }

@@ -10,7 +10,7 @@ const Groups = async () => {
 
   try {
     const [groupTable]= await pool.query(query);
-    console.log("Group table created or already exists:", groupTable);
+    console.log("Group table created or already exists:");
   } catch (error) {
     console.error("Unable to create group table", error);
   }
