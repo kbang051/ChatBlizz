@@ -141,22 +141,71 @@ const getAllUsers = async (req, res) => {
   }
 };
 
+// const fetchSearchResults = async (req, res) => {
+//   console.log("Request received to fetch search result")
+//   const userId = req.user?.uid;
+//   const q = decodeURIComponent(req.params?.q); //search param
+//   console.log ("Request Parameter: ", q);
+//   const query1 = `SELECT id, username, email FROM users WHERE LOWER(username) LIKE LOWER(?) LIMIT 6`;
+//   const query2 = `SELECT user_id, friend_id, status FROM friends WHERE (friend_id IN ?) OR (user_id IN ?)`;
+//   try {
+//     const [getProfiles] = await pool.query( query1, [`%${q}%`] );
+//     if (getProfiles.length > 0) {
+//       console.log(`Profiles fetched from the backend for input like ${q}: `, getProfiles)
+//       const suggestionIds = getProfiles.map(u => u.id);
+//       const [friendList] = await pool.query(query2, [suggestionIds]);
+//       const friendSet = new Set();
+//       for (let row of friendList) {
+//         const friendId = row.user_id === userId ? row.friend_id : row.user_id;
+//         friendSet.add(friendId);
+//       }
+//     }
+//     else {
+//       console.log("No matching entries in the database for input like: ", q)
+//       return res.status(200).send([]);
+//     }
+//     return res.status(200).send(getProfiles);
+//   } catch (error) {
+//     console.log("Error while fetching profiles from the backend:", error)
+//   }
+// }
+
 const fetchSearchResults = async (req, res) => {
-  console.log("Request received to fetch search result")
-  const q = decodeURIComponent(req.params?.q); //search param
-  console.log ("Request Parameter: ", q)
-  const query = `SELECT id, username, email FROM users WHERE LOWER(username) LIKE LOWER(?) LIMIT 6`;
+  console.log("Request received to fetch search result");
+
+  const userId = req.user?.uid;
+  const q = decodeURIComponent(req.params?.q); // search param
+  console.log("Request Parameter: ", q);
+
+  const query1 = `SELECT id, username, email FROM users WHERE LOWER(username) LIKE LOWER(?) AND id != ? LIMIT 6`;
+  const query2 = `SELECT user_id, friend_id, status FROM friends WHERE (user_id = ? AND friend_id IN (?)) OR (friend_id = ? AND user_id IN (?))`;
+
   try {
-    const [getProfiles] = await pool.query( query, [`%${q}%`] );
-    if (getProfiles.length > 0)
-        console.log(`Profiles fetched from the backend for input like ${q}: `, getProfiles)
-    else 
-      console.log("No matching entries in the database for input like: ", q)
-    return res.status(200).send(getProfiles);
+    const [getProfiles] = await pool.query(query1, [`%${q}%`, userId]);
+    if (getProfiles.length === 0) {
+      console.log("No matching entries in the database for input like:", q);
+      return res.status(200).send([]);
+    }
+    const suggestionIds = getProfiles.map(u => u.id);
+    const [friendList] = await pool.query(query2, [userId, suggestionIds, userId, suggestionIds]);
+    const friendMap = new Map();
+    for (let row of friendList) {
+      const friendId = row.user_id === userId ? row.friend_id : row.user_id;
+      friendMap.set(friendId, row.status || 'unknown');
+    }
+
+    const result = getProfiles.map(user => ({
+      ...user,
+      status: friendMap.has(user.id) ? friendMap.get(user.id) : 'unknown'
+    }));
+
+    console.log("Final search results with friendStatus: ", result);
+    return res.status(200).send(result);
   } catch (error) {
-    console.log("Error while fetching profiles from the backend:", error)
+    console.log("Error while fetching profiles from the backend:", error);
+    return res.status(500).send({ error: "Internal server error" });
   }
-}
+};
 
 //detail of a particular user
 const getUserDetail = async (req, res) => {
