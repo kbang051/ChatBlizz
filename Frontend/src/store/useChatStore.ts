@@ -35,6 +35,8 @@ interface ChatState {
     sendMessage: (content: string) => Promise<void>,
     subscribeToMessages: () => void,
     unsubscribeFromMessages: () => void,
+    setOpenChatTrue: () => void,
+    setOpenChatFalse: () => void,
     setOpenFileUploadedSectionTrue: () => void,
     setOpenFileUploadedSectionFalse: () => void,
 }
@@ -116,6 +118,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     setOpenFileUploadedSectionFalse: () => {
         set({ openFileUploadSection: false });
+    },
+
+    setOpenChatTrue: () => {
+        set({openChat: true});
+    },
+
+    setOpenChatFalse: () => {
+        set({openChat: false});
     },
 
     sendMessage: async (content: string) => {

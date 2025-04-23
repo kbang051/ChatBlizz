@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react'
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore.ts';
+import { useUserSearchStore } from '../../store/useUserSearchStore.ts';
 
 interface HeaderBarProps {
   onMenuClick: () => void;
@@ -17,6 +18,7 @@ interface Suggestions {
 
 const HeaderBar: React.FC<HeaderBarProps> = ({ onMenuClick, searchQuery, onSearchChange }) => {
   const { userId, authenticationToken } = useAuthStore.getState();
+  const { searchAll } = useUserSearchStore.getState();
   const [suggestions, setSuggestions] = useState<Suggestions[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false);
   const wrappedRef = useRef<HTMLDivElement>(null);
@@ -89,6 +91,12 @@ const HeaderBar: React.FC<HeaderBarProps> = ({ onMenuClick, searchQuery, onSearc
               onChange={(e) => {
                 onSearchChange(e.target.value);
                 setShowSuggestions(true);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  searchAll((e.target as HTMLInputElement).value);
+                  setShowSuggestions(false);
+                }
               }}
             />
             <div className="absolute left-3 top-2.5 text-gray-400">

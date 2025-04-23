@@ -1,15 +1,17 @@
 import { useState, useEffect } from "react";
 import { useAuthStore } from "../../store/useAuthStore.ts";
 import { useChatStore } from "../../store/useChatStore.ts";
+import { useUserSearchStore } from "../../store/useUserSearchStore.ts";
 import SideBar from "../Sidebar/SideBar.tsx";
 import HeaderBar from "../Headerbar/HeaderBar.tsx";
 import ChatContainer from "../ChatComponent/ChatContainer.tsx";
+import SearchAllUsers from "../SearchUserComponent/SearchAllUsers.tsx";
 
 const HomePage = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const { getUsers, openChat } = useChatStore();
-  
+  const { getUsers, openChat, openFileUploadSection } = useChatStore();
+  const { searchAllProfiles } = useUserSearchStore();
   //Load friend list on mount 
   useEffect(() => {
     getUsers()
@@ -35,7 +37,8 @@ const HomePage = () => {
           {/* Main Content */}
           <main className="flex-1 overflow-y-auto p-4 md:p-6 ">
             <div className="max-w-7xl mx-auto h-full">
-              {openChat && <ChatContainer/>} {/* ChatContainer will be displayed if openChat is true */}
+              { openChat && <ChatContainer/> } {/* ChatContainer will be displayed if openChat is true */}
+              { !openChat && !openFileUploadSection && searchAllProfiles && <SearchAllUsers/> } {/* Search all users in the db as per the search query*/}
             </div>
           </main>
         </div>

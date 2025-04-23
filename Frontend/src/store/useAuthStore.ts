@@ -38,7 +38,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 userId: userCredential.user.uid,
                 authenticationToken: await auth.currentUser?.getIdToken(),
             });
-            localStorage.setItem("user_id", userCredential.user.uid)
+            // localStorage.setItem("user_id", userCredential.user.uid)
             get().connectSocket();
         } catch (error: any) {
             console.log("Error logging in:", error.message);
