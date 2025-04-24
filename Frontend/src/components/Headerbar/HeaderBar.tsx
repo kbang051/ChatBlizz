@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react'
 import axios from 'axios';
+import FriendRequestComponent from './FriendRequestComponent.tsx';
 import { useAuthStore } from '../../store/useAuthStore.ts';
 import { useUserSearchStore } from '../../store/useUserSearchStore.ts';
 
@@ -21,6 +22,7 @@ const HeaderBar: React.FC<HeaderBarProps> = ({ onMenuClick, searchQuery, onSearc
   const { searchAll } = useUserSearchStore.getState();
   const [suggestions, setSuggestions] = useState<Suggestions[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [showFriendRequests, setShowFriendRequests] = useState(false);
   const wrappedRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -37,7 +39,7 @@ const HeaderBar: React.FC<HeaderBarProps> = ({ onMenuClick, searchQuery, onSearc
         if (searchQuery) {
           await axios
             .get(
-              `http://localhost:8000/api/v1/users/fetchSearchResults/${encodeURIComponent(searchQuery || "")}`,
+              `http://localhost:8000/api/v1/users/fetchRecommendation/${encodeURIComponent(searchQuery || "")}`,
               { headers: { Authorization: `Bearer ${authenticationToken}` } }
             )
             .then((res) => setSuggestions(res.data))
@@ -142,23 +144,33 @@ const HeaderBar: React.FC<HeaderBarProps> = ({ onMenuClick, searchQuery, onSearc
         </div>
 
         {/* Right Section - Icons */}
+
         <div className="flex items-center space-x-4">
-          <button className="p-2 text-gray-500 hover:text-gray-600 relative">
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-              />
-            </svg>
-            <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
-          </button>
+        {/* Friend Requests */}
+          <div className="relative">
+            <button className="p-2 text-gray-500 hover:text-gray-600 relative hover:cursor-pointer" onClick={() => setShowFriendRequests(!showFriendRequests)}>
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+                />
+              </svg>
+              <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
+            </button>
+
+            {showFriendRequests && (
+              <div className="absolute right-0 mt-2 z-50">
+                <FriendRequestComponent />
+              </div>
+            )}
+          </div>
 
           <button className="p-2 text-gray-500 hover:text-gray-600">
             <svg

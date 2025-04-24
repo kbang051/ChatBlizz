@@ -6,7 +6,8 @@ import {
   fileUpload,
   saveMessage,
   getAllUsers,
-  fetchSearchResults,
+  fetchRecommendation,
+  fetchSearchAll,
   sendFriendRequest,
   acceptFriendRequest,
   getUserDetail,
@@ -16,21 +17,13 @@ import {
 
 const router = Router();
 
-// router.route("/getAllUsers/:q").get(getAllUsers);
-// router.route("/fetchSearchResults/:q").get(fetchSearchResults);
-// router.route("/getUserDetail/:userId/and/:friendId").get(getUserDetail);
-// router.route("/displayFriendRequests/:userId").get(displayFriendRequests);
-// router.route("/showConversation").get(showConversation);
-
-// router.route("/sendFriendRequest").post(sendFriendRequest);
-// router.route("/acceptFriendRequest").post(acceptFriendRequest);
-// router.route("/saveMessage").post(saveMessage);
-// router.route("/fileUpload").post(upload.array("files"), fileUpload);
-
 router.route("/getAllUsers/:q").get(verifyToken, getAllUsers);
-router.route("/fetchSearchResults/:q").get(verifyToken, fetchSearchResults);
+router.route("/fetchRecommendation/:q").get(verifyToken, fetchRecommendation);
+router.route("/fetchSearchAll/:q").get(verifyToken, fetchSearchAll);
 router.route("/getUserDetail/:userId/and/:friendId").get(verifyToken, getUserDetail);
+
 router.route("/displayFriendRequests/:userId").get(verifyToken, displayFriendRequests);
+
 router.route("/showConversation").get(verifyToken, showConversation);
 
 router.route("/sendFriendRequest").post(verifyToken, sendFriendRequest);

@@ -141,43 +141,55 @@ const getAllUsers = async (req, res) => {
   }
 };
 
-// const fetchSearchResults = async (req, res) => {
-//   console.log("Request received to fetch search result")
-//   const userId = req.user?.uid;
-//   const q = decodeURIComponent(req.params?.q); //search param
-//   console.log ("Request Parameter: ", q);
-//   const query1 = `SELECT id, username, email FROM users WHERE LOWER(username) LIKE LOWER(?) LIMIT 6`;
-//   const query2 = `SELECT user_id, friend_id, status FROM friends WHERE (friend_id IN ?) OR (user_id IN ?)`;
-//   try {
-//     const [getProfiles] = await pool.query( query1, [`%${q}%`] );
-//     if (getProfiles.length > 0) {
-//       console.log(`Profiles fetched from the backend for input like ${q}: `, getProfiles)
-//       const suggestionIds = getProfiles.map(u => u.id);
-//       const [friendList] = await pool.query(query2, [suggestionIds]);
-//       const friendSet = new Set();
-//       for (let row of friendList) {
-//         const friendId = row.user_id === userId ? row.friend_id : row.user_id;
-//         friendSet.add(friendId);
-//       }
-//     }
-//     else {
-//       console.log("No matching entries in the database for input like: ", q)
-//       return res.status(200).send([]);
-//     }
-//     return res.status(200).send(getProfiles);
-//   } catch (error) {
-//     console.log("Error while fetching profiles from the backend:", error)
-//   }
-// }
-
-const fetchSearchResults = async (req, res) => {
+const fetchRecommendation = async (req, res) => {
   console.log("Request received to fetch search result");
 
   const userId = req.user?.uid;
   const q = decodeURIComponent(req.params?.q); // search param
   console.log("Request Parameter: ", q);
+  if (!q || q === "")
+    return res.status(404).json({ message: "Empty Search Parameter" });
 
   const query1 = `SELECT id, username, email FROM users WHERE LOWER(username) LIKE LOWER(?) AND id != ? LIMIT 6`;
+  const query2 = `SELECT user_id, friend_id, status FROM friends WHERE (user_id = ? AND friend_id IN (?)) OR (friend_id = ? AND user_id IN (?))`;
+
+  try {
+    const [getProfiles] = await pool.query(query1, [`%${q}%`, userId]);
+    if (getProfiles.length === 0) {
+      console.log("No matching entries in the database for input like:", q);
+      return res.status(200).send([]);
+    }
+    const suggestionIds = getProfiles.map(u => u.id);
+    const [friendList] = await pool.query(query2, [userId, suggestionIds, userId, suggestionIds]);
+    const friendMap = new Map();
+    for (let row of friendList) {
+      const friendId = row.user_id === userId ? row.friend_id : row.user_id;
+      friendMap.set(friendId, row.status || 'unknown');
+    }
+
+    const result = getProfiles.map(user => ({
+      ...user,
+      status: friendMap.has(user.id) ? friendMap.get(user.id) : 'unknown'
+    }));
+
+    console.log("Final search results with friendStatus: ", result);
+    return res.status(200).send(result);
+  } catch (error) {
+    console.log("Error while fetching profiles from the backend:", error);
+    return res.status(500).send({ error: "Internal server error" });
+  }
+};
+
+const fetchSearchAll = async (req, res) => {
+  console.log("Request received to fetch search result at fetchSearchAll");
+
+  const userId = req.user?.uid;
+  const q = decodeURIComponent(req.params?.q); // search param
+  console.log("Request Parameter: ", q);
+  if (!q || q === "")
+      return res.status(404).json({ message: "Empty Search Parameter" });
+
+  const query1 = `SELECT id, username, email FROM users WHERE LOWER(username) LIKE LOWER(?) AND id != ?`;
   const query2 = `SELECT user_id, friend_id, status FROM friends WHERE (user_id = ? AND friend_id IN (?)) OR (friend_id = ? AND user_id IN (?))`;
 
   try {
@@ -241,6 +253,7 @@ const getUserDetail = async (req, res) => {
 
 const sendFriendRequest = async (req, res) => {
   const { user_id, friend_id } = req.body;
+  console.log(`Request received at sendFriendRequest with following: user_id -- ${user_id}, friend_id : ${friend_id}`)
 
   if (!user_id || user_id.trim().length === 0) {
     console.log("Empty user_id:", user_id);
@@ -316,6 +329,7 @@ const displayFriendRequests = async (req, res) => {
                  FROM friends 
                  JOIN users ON friends.user_id = users.id 
                  WHERE friends.friend_id = ? AND friends.status = "pending"`;
+
   //user_id corresponds to the person who sent the friend request in this case and friend_id is the account holder's id
   try {
     const [response] = await pool.query(query, [ accountHoldersId ]);
@@ -323,6 +337,8 @@ const displayFriendRequests = async (req, res) => {
       console.log("No Pending Requests"); 
       return res.status(201).json({message: "No Pending Requests"});
     } else if (response.length > 0) {
+      console.log("Friend Request Response");
+      console.log(response);
       return res.status(200).send(response);
     }
   } catch (error) {
@@ -337,10 +353,10 @@ const showConversation = async (req, res) => {
   if (!userId1 || !userId2) {
     return res.status(400).json({ message: 'Both userId1 and userId2 are required' });
   }
-  const fetchQuery = 
-    `SELECT * FROM messages 
-    WHERE ((sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?))
-    ORDER BY created_at ASC`;
+
+  const fetchQuery = `SELECT * FROM messages 
+                      WHERE ((sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?))
+                      ORDER BY created_at ASC`;
 
   const updateQuery =  `UPDATE messages 
                         SET delivered = TRUE, delivered_at = CURRENT_TIMESTAMP 
@@ -371,7 +387,18 @@ const showConversation = async (req, res) => {
   }
 };
 
-export { fileUpload, saveMessage, getAllUsers, fetchSearchResults, getUserDetail, sendFriendRequest, acceptFriendRequest, displayFriendRequests, showConversation };
+export { 
+  fileUpload, 
+  saveMessage, 
+  getAllUsers, 
+  fetchRecommendation, 
+  fetchSearchAll, 
+  getUserDetail, 
+  sendFriendRequest, 
+  acceptFriendRequest, 
+  displayFriendRequests, 
+  showConversation 
+};
 
 
 // {
