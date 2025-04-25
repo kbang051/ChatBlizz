@@ -199,7 +199,16 @@ const fetchSearchAll = async (req, res) => {
       return res.status(200).send([]);
     }
     const suggestionIds = getProfiles.map(u => u.id);
-    const [friendList] = await pool.query(query2, [userId, suggestionIds, userId, suggestionIds]);
+    let [friendList] = await pool.query(query2, [userId, suggestionIds, userId, suggestionIds]);
+    friendList = friendList.map((item) => {
+      if (item.status === "pending") {
+        if (item.friend_id === userId) {
+          item.status = 'ToBeAccepted';
+        }
+      }
+      return item;
+    })
+    console.log("There's a problem in map");
     const friendMap = new Map();
     for (let row of friendList) {
       const friendId = row.user_id === userId ? row.friend_id : row.user_id;
@@ -325,7 +334,7 @@ const displayFriendRequests = async (req, res) => {
     console.log("Empty AccountHolders ID");
     return res.status(400).json({ error: "Account Holder's ID is required" });
   }
-  const query = `SELECT friends.user_id, friends.status, friends.created_at, users.username 
+  const query = `SELECT friends.user_id, friends.status, friends.created_at, users.username, users.email
                  FROM friends 
                  JOIN users ON friends.user_id = users.id 
                  WHERE friends.friend_id = ? AND friends.status = "pending"`;

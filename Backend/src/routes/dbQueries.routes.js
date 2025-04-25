@@ -27,7 +27,9 @@ router.route("/displayFriendRequests/:userId").get(verifyToken, displayFriendReq
 router.route("/showConversation").get(verifyToken, showConversation);
 
 router.route("/sendFriendRequest").post(verifyToken, sendFriendRequest);
+
 router.route("/acceptFriendRequest").post(verifyToken, acceptFriendRequest);
+
 router.route("/saveMessage").post(verifyToken, saveMessage);
 router.route("/fileUpload").post(verifyToken, upload.array("files"), fileUpload);
 

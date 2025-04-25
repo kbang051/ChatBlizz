@@ -18,13 +18,15 @@ interface Suggestions {
 }
 
 const HeaderBar: React.FC<HeaderBarProps> = ({ onMenuClick, searchQuery, onSearchChange }) => {
-  const { userId, authenticationToken } = useAuthStore.getState();
-  const { searchAll } = useUserSearchStore.getState();
-  const [suggestions, setSuggestions] = useState<Suggestions[]>([])
+  const { userId, authenticationToken } = useAuthStore();
+  const { searchAll } = useUserSearchStore();
+  const [suggestions, setSuggestions] = useState<Suggestions[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showFriendRequests, setShowFriendRequests] = useState(false);
   const wrappedRef = useRef<HTMLDivElement>(null);
+  const showFriendRequestsRef = useRef<HTMLDivElement>(null);
 
+  //handle mouse click outside search area
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (wrappedRef.current && wrappedRef.current.contains(event.target as Node) == false)
@@ -32,6 +34,16 @@ const HeaderBar: React.FC<HeaderBarProps> = ({ onMenuClick, searchQuery, onSearc
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [])
+
+  //handle mouse click outside friendRequest area
+  useEffect(() => {
+    const handleShowFriendRequests = (event: MouseEvent) => {
+      if (showFriendRequestsRef.current && showFriendRequestsRef.current.contains(event.target as Node) == false)
+        setShowFriendRequests(false);
+    }
+    document.addEventListener("mousedown", handleShowFriendRequests);
+    return () => document.removeEventListener("mousedown", handleShowFriendRequests);
   }, [])
 
   useEffect(() => {
@@ -147,7 +159,7 @@ const HeaderBar: React.FC<HeaderBarProps> = ({ onMenuClick, searchQuery, onSearc
 
         <div className="flex items-center space-x-4">
         {/* Friend Requests */}
-          <div className="relative">
+          <div className="relative" ref = {showFriendRequestsRef}>
             <button className="p-2 text-gray-500 hover:text-gray-600 relative hover:cursor-pointer" onClick={() => setShowFriendRequests(!showFriendRequests)}>
               <svg
                 className="w-6 h-6"

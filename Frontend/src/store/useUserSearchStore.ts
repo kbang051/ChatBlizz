@@ -12,8 +12,10 @@ interface SearchAll {
 
 interface UserSearchProps {
     searchAllProfiles: boolean,
+    setSearchAllProfilesFalse: () => void;
     searchAllResults: SearchAll[],
     setSearchAllResults: ([]: SearchAll[]) => void,
+    modifySearchAllResultsOnAccept: (id: string) => void,
     searchAll: (searchQuery: string) => void,
     handleFriendStatusToogle: (userId: string) => void,
 }
@@ -21,6 +23,10 @@ interface UserSearchProps {
 export const useUserSearchStore = create<UserSearchProps>((set, get) => ({
   searchAllProfiles: false,
   searchAllResults: [],
+
+  setSearchAllProfilesFalse: () => {
+    set({searchAllProfiles: false});
+  },
 
   setSearchAllResults: (searchResults: SearchAll[]) => {
     console.log("Request received to set chat and file section to false");
@@ -58,6 +64,11 @@ export const useUserSearchStore = create<UserSearchProps>((set, get) => ({
         })
         .catch((error) => console.log("Unable to searchAll users: ", error));
     }
+  },
+
+  modifySearchAllResultsOnAccept: (id: string) => {
+    const results = get().searchAllResults.filter(item => item.id !== id);
+    set({searchAllResults: results});
   },
 
   handleFriendStatusToogle: async (userSearchId: string) => {

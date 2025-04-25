@@ -2,6 +2,7 @@ import { create } from "zustand";
 import toast from "react-hot-toast";
 import axios from "axios";
 import { useAuthStore } from "./useAuthStore.ts";
+import { useUserSearchStore } from "./useUserSearchStore.ts";
 
 interface Users {
     id: string,
@@ -26,6 +27,7 @@ interface ChatState {
     setMessages: (newMessage: Message[]) => void,
     users: Users[],
     getUsers: () => Promise<void>,
+    setUsers: (id: string, username: string, email: string) => void;
     selectedUser: string | null,
     setSelectedUser: (searchId: string) => void,
     isUsersLoading: boolean,
@@ -56,9 +58,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         try {
             if (!userId) throw new Error("User ID is null or undefined");
             const response = await axios.get(`http://localhost:8000/api/v1/users/getAllUsers/${encodeURIComponent(userId)}`,
-              {
-                headers: { Authorization: `Bearer ${authenticationToken}` },
-              }
+              {headers: { Authorization: `Bearer ${authenticationToken}` }}
             );
             set({ users: response.data});
             toast.success("Users loaded successfully");
@@ -68,6 +68,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
         } finally {
             set({ isUsersLoading: false });
         }
+    },
+
+    setUsers: (id: string, username: string, email: string) => {
+        set({users: [...get().users, { id, username, email }]});
     },
 
     getMessages: async () => {
@@ -103,8 +107,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
     },
 
     setSelectedUser: (searchId: string) => {
+        //visit HomePage.tsx for more clarity related to component state rendering
+        useUserSearchStore.getState().setSearchAllProfilesFalse();
         set({ 
-            selectedUser: searchId,  
+            selectedUser: searchId,
             openChat: true,   
             openFileUploadSection: false,       
             messages: []             

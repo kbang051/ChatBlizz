@@ -63,7 +63,6 @@ const SideBar: React.FC<SideBarProps> = ({ isOpen, onClose }) => {
                   <span>Profile</span>
                 </a>
               </li>
-              {/* Add more menu items */}
             </ul>
           </nav>
 
