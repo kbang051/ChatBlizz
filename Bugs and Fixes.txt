@@ -1,8 +1,26 @@
 1. LocalStorage is used to store userId of the user who logged in. 
    Therefore, if different users try to log in from the same system and the same browser but different tabs, 
-   the application crashes. 
+   the application crashes.  -- done
 
 2. Fix scroll of the chatWindow - Whenever the messages cannot fit within the screen size, 
    the parent component increases its size, resulting in inconsistent CSS. 
 
-3. Fix the order in which messages are displayed. 
+3. Fix the order in which messages are displayed. ----- done
+
+Performance Optimization - 
+
+a. Friend requests are being fetched again and again when we click on the friend request icon. 
+Can we cache this process using Redis? Like, can we keep track of the last friend request accepted and 
+compare this date and time with the last fetched response from the database? 
+
+b. Can similar type of caching strategy be used to fetch conversations? Doubly linked list can be used 
+   to keep track of latest interactions (LRU Cache Question --- leetcode)
+
+c. Request rate limiter in backend 
+
+d. Real time display of notification of new message and unread messages 
+
+e. Firebase session expires in 1 hour, so implement a backend method to auto-renew token
+
+e. Infinite scrolling on chatMessage and allProfile section 
+

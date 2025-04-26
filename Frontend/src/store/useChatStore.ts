@@ -53,6 +53,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     openFileUploadSection: false,
 
     getUsers: async () => {
+        console.log("getUsers got called!!");
         const { userId, authenticationToken } = useAuthStore.getState();
         set({ isUsersLoading: true });
         try {

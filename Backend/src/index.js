@@ -5,6 +5,7 @@ import checkTables from "./utils/SQLTableCreation.js";
 import socketAuth from "./middlewares/verifySocketConnection.middleware.js";
 import connectUser from "./socket/connectUser.js";
 import sequelize from "./db/sequelize.js";
+import redis from "./db/redisClient.js";
 import { Server } from "socket.io"
 import { app } from "./app.js";
 
@@ -28,8 +29,12 @@ const checkDatabaseConnection = async () => {
   try {
     await pool.query("SELECT 1");
     console.log("Successfully Connected to ChatBlizz Database");
+    //redis
+    await redis.ping();
+    console.log("Redis ping successful!!")
   } catch (error) {
     console.error("Unable to connect to the DB:", error);
+    process.exit(1);
   }
 };
 

@@ -1,0 +1,14 @@
+Redis Architecture - 
+
+-------------------------------------------
+Caching Friend Requests:
+
+- Currently, we are caching friend requests sent to a person with timestamp (sendFriendRequest controller).
+  Why? We are trying to use this cached info when a person wants to view pending requests (a call made 
+  to displayFriendRequest controller). 
+
+  The pending requests are currenty going to change for a user when he accepts/declines friendShip request.
+  If there is not recent activity, this means we can display the old requests. Therefore, in this case 
+  displayFriendRequest controller can send cached data. 
+  
+    

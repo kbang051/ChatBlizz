@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { fileTypeFromBuffer } from 'file-type';
 import { pool, io, getReceiverSocketId } from "../index.js";
 import { uploadToS3 } from '../utils/s3Upload.js';
+import redis from './redisClient.js';
 
 const fileUpload = async (req, res) => {
   console.log("Request received in fileUpload");
@@ -260,6 +261,9 @@ const getUserDetail = async (req, res) => {
   }
 }
 
+// Key: `friendship:${user_id}:${friend_id}`
+// Value: JSON.stringify({ exists: true, timestamp: Date.now() })
+// TTL: Optional, based on how long you trust the cache
 const sendFriendRequest = async (req, res) => {
   const { user_id, friend_id } = req.body;
   console.log(`Request received at sendFriendRequest with following: user_id -- ${user_id}, friend_id : ${friend_id}`)
@@ -273,10 +277,8 @@ const sendFriendRequest = async (req, res) => {
     return res.status(400).json({ message: "Empty friend_id" });
   }
 
-  const checkQuery = `SELECT * FROM friends WHERE user_id = ? AND friend_id = ? LIMIT 1`;
-
   try {
-    const [existingRecord] = await pool.query(checkQuery, [user_id, friend_id]);
+    const [existingRecord] = await pool.query(`SELECT * FROM friends WHERE user_id = ? AND friend_id = ? LIMIT 1`, [user_id, friend_id]);
     if (existingRecord.length > 0) {
       console.log("A record already exists in the friends database");
       return res.status(400).json({ message: "Friendship already exists" });
@@ -287,6 +289,17 @@ const sendFriendRequest = async (req, res) => {
 
     if (result.affectedRows > 0) {
       console.log("Friend record inserted successfully");
+      //redis 
+      const redisKey = "pending_requests";
+      const field = friend_id;
+      const value = JSON.stringify({
+        lastUpdated: Date.now(),
+        updatedBy: user_id // last friend request sent by this person
+      })
+
+      await redis.hset(redisKey, field, value);
+      console.log("Redis updated with timestamp of friend_request")
+
       return res.status(200).json({ message: "Friend request sent successfully" });
     } else {
       console.log("No rows were inserted");
@@ -310,12 +323,22 @@ const acceptFriendRequest = async (req, res) => {
     console.log("Empty friend_id:", friend_id);
     return res.status(400).json({ message: "Empty friend_id" });
   }
-  const query = `UPDATE friends SET status = "accepted" WHERE (user_id = ? AND friend_id = ?) 
-                 OR (user_id = ? AND friend_id = ?)`;  
+  const query = `UPDATE friends SET status = "accepted" WHERE (user_id = ? AND friend_id = ?)`;  
+  // const query = `UPDATE friends SET status = "accepted" WHERE (user_id = ? AND friend_id = ?) 
+  //                OR (user_id = ? AND friend_id = ?)`;  
   try {
-    const [result] = await pool.query(query, [user_id, friend_id, friend_id, user_id])
+    //const [result] = await pool.query(query, [user_id, friend_id, friend_id, user_id])
+    const [result] = await pool.query(query, [friend_id, user_id])
     if (result.affectedRows > 0) {
       console.log("Friend request accepted");
+      //redis
+      const redisKey = "accept_requests";
+      const field = user_id;
+      const value = JSON.stringify({
+        lastUpdated: Date.now()
+      })  
+      await redis.hset(redisKey, field, value);
+      console.log("Redis updated with timestamp of accepted_request")
       return res.status(200).json({ message: "Friend request accepted" });
     } else {
       console.log("Couldn't accept friend request");
@@ -341,6 +364,14 @@ const displayFriendRequests = async (req, res) => {
 
   //user_id corresponds to the person who sent the friend request in this case and friend_id is the account holder's id
   try {
+    const redisKey = "display_friend_requests";
+    const field = accountHoldersId;
+    const lastFriendRequest = await redis.hget("pending_requests", accountHoldersId);
+    const lastAccpetedFriendRequest = await redis.hget("accept_requests", accountHoldersId);
+    if (lastFriendRequest && lastAccpetedFriendRequest) {
+      const cachedRequests = await redis.get("display_friend_requests", accountHoldersId);
+      
+    }
     const [response] = await pool.query(query, [ accountHoldersId ]);
     if (response.length === 0) {
       console.log("No Pending Requests"); 
