@@ -278,26 +278,25 @@ const sendFriendRequest = async (req, res) => {
   }
 
   try {
-    const [existingRecord] = await pool.query(`SELECT * FROM friends WHERE user_id = ? AND friend_id = ? LIMIT 1`, [user_id, friend_id]);
-    if (existingRecord.length > 0) {
-      console.log("A record already exists in the friends database");
-      return res.status(400).json({ message: "Friendship already exists" });
-    }
-
     const insertQuery = `INSERT INTO friends (id, user_id, friend_id, status) VALUES (UUID(), ?, ?, "pending")`;
     const [result] = await pool.query(insertQuery, [user_id, friend_id]);
 
     if (result.affectedRows > 0) {
       console.log("Friend record inserted successfully");
       //redis 
-      const redisKey = "pending_requests";
-      const field = friend_id;
-      const value = JSON.stringify({
-        lastUpdated: Date.now(),
-        updatedBy: user_id // last friend request sent by this person
-      })
+      // const redisKey = "pending_requests";
+      // const field = friend_id;
+      // const value = JSON.stringify({
+      //   lastUpdated: Date.now(),
+      //   updatedBy: user_id // last friend request sent by this person
+      // })
 
-      await redis.hset(redisKey, field, value);
+      // await redis.hset(redisKey, field, value);
+      // console.log("Redis updated with timestamp of friend_request")
+
+      const redisHash = `pending_requests:${friend_id}`;
+      await redis.hset(redisHash, user_id, Date.now());  // user_id --- person who sends friend request
+      await redis.set(`pending_requests_updated:${friend_id}`, Date.now());
       console.log("Redis updated with timestamp of friend_request")
 
       return res.status(200).json({ message: "Friend request sent successfully" });
@@ -324,25 +323,19 @@ const acceptFriendRequest = async (req, res) => {
     return res.status(400).json({ message: "Empty friend_id" });
   }
   const query = `UPDATE friends SET status = "accepted" WHERE (user_id = ? AND friend_id = ?)`;  
-  // const query = `UPDATE friends SET status = "accepted" WHERE (user_id = ? AND friend_id = ?) 
-  //                OR (user_id = ? AND friend_id = ?)`;  
   try {
-    //const [result] = await pool.query(query, [user_id, friend_id, friend_id, user_id])
     const [result] = await pool.query(query, [friend_id, user_id])
     if (result.affectedRows > 0) {
       console.log("Friend request accepted");
       //redis
-      const redisKey = "accept_requests";
-      const field = user_id;
-      const value = JSON.stringify({
-        lastUpdated: Date.now()
-      })  
-      await redis.hset(redisKey, field, value);
+      const redisHash = `pending_requests:${user_id}`;
+      await redis.hdel(redisHash, friend_id);
+      await redis.set(`accepted_requests_updated:${user_id}`, Date.now());
+
       console.log("Redis updated with timestamp of accepted_request")
       return res.status(200).json({ message: "Friend request accepted" });
     } else {
-      console.log("Couldn't accept friend request");
-      return res.status(500).json({ message: "Couldn't accept friend request" });
+      return res.status(400).json({ message: "No pending friend request to accept" });
     }
   } catch (error) {
     console.error("Error accepting friend request:", error);
@@ -351,6 +344,7 @@ const acceptFriendRequest = async (req, res) => {
 }
 
 const displayFriendRequests = async (req, res) => {
+  const start = Date.now();
   const accountHoldersId = decodeURIComponent(req.params?.userId);
   console.log("AccountHoldersId: ", accountHoldersId)
   if (!accountHoldersId || accountHoldersId === "") {
@@ -364,22 +358,36 @@ const displayFriendRequests = async (req, res) => {
 
   //user_id corresponds to the person who sent the friend request in this case and friend_id is the account holder's id
   try {
-    const redisKey = "display_friend_requests";
-    const field = accountHoldersId;
-    const lastFriendRequest = await redis.hget("pending_requests", accountHoldersId);
-    const lastAccpetedFriendRequest = await redis.hget("accept_requests", accountHoldersId);
-    if (lastFriendRequest && lastAccpetedFriendRequest) {
-      const cachedRequests = await redis.get("display_friend_requests", accountHoldersId);
-      
+    const pendingUpdated = await redis.get(`pending_requests_updated:${accountHoldersId}`);
+    const acceptedUpdated = await redis.get(`accepted_requests_updated:${accountHoldersId}`);
+    const cached = await redis.get(`cached_display_requests:${accountHoldersId}`);
+    console.log("PendingUpdated: ", pendingUpdated);
+    console.log("AcceptedUpdated: ", acceptedUpdated);
+    console.log("Cached: ", cached)
+    let latestUpdate = Math.max(pendingUpdated || 0, acceptedUpdated || 0);
+    const isCacheValid = cached && (JSON.parse(cached).lastFetched >= latestUpdate);
+
+    if (isCacheValid) {
+      const data = JSON.parse(cached).data;
+      const end = Date.now();
+      console.log(`✅ Cache hit while returning friend requests - Time taken: ${end - start} ms`);
+      return res.status(200).send(data);
     }
-    const [response] = await pool.query(query, [ accountHoldersId ]);
-    if (response.length === 0) {
-      console.log("No Pending Requests"); 
+
+    const [results] = await pool.query(query, [ accountHoldersId ]);
+    const response = { data: results, lastFetched: Date.now() };
+    await redis.set(`cached_display_requests:${accountHoldersId}`, JSON.stringify(response));
+    if (results.length === 0) {
+      const end = Date.now();
+      console.log(`🛢️ Cache miss (DB fetch) - Time taken: ${end - start} ms`);
+      console.log("No Pending Requests");  
       return res.status(201).json({message: "No Pending Requests"});
-    } else if (response.length > 0) {
-      console.log("Friend Request Response");
-      console.log(response);
-      return res.status(200).send(response);
+    } else if (results.length > 0) {
+      const end = Date.now();
+      console.log(`🛢️ Cache miss (DB fetch) - Time taken: ${end - start} ms`);
+      // console.log("Friend Request Response");
+      // console.log(results);
+      return res.status(200).send(results);
     }
   } catch (error) {
     console.error("Unable to fetch friend requests:", error);
