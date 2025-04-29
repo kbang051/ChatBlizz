@@ -284,16 +284,6 @@ const sendFriendRequest = async (req, res) => {
     if (result.affectedRows > 0) {
       console.log("Friend record inserted successfully");
       //redis 
-      // const redisKey = "pending_requests";
-      // const field = friend_id;
-      // const value = JSON.stringify({
-      //   lastUpdated: Date.now(),
-      //   updatedBy: user_id // last friend request sent by this person
-      // })
-
-      // await redis.hset(redisKey, field, value);
-      // console.log("Redis updated with timestamp of friend_request")
-
       const redisHash = `pending_requests:${friend_id}`;
       await redis.hset(redisHash, user_id, Date.now());  // user_id --- person who sends friend request
       await redis.set(`pending_requests_updated:${friend_id}`, Date.now());
@@ -404,7 +394,12 @@ const showConversation = async (req, res) => {
 
   const fetchQuery = `SELECT * FROM messages 
                       WHERE ((sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?))
-                      ORDER BY created_at ASC`;
+                      ORDER BY created_at DESC 
+                      LIMIT 15`;
+
+  // const fetchQuery = `SELECT * FROM messages 
+  //                     WHERE ((sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?))
+  //                     ORDER BY created_at ASC`;
 
   const updateQuery =  `UPDATE messages 
                         SET delivered = TRUE, delivered_at = CURRENT_TIMESTAMP 
@@ -447,136 +442,3 @@ export {
   displayFriendRequests, 
   showConversation 
 };
-
-
-// {
-//   "data": [
-//     {
-//       "id": "18081ab2-fa21-11ef-9670-c894028360ae",
-//       "username": "dummyUser1",
-//       "email": "dummy1@gmail.com"
-//     },
-//     {
-//       "id": "28abdb7f-fa21-11ef-9670-c894028360ae",
-//       "username": "dummyUser3",
-//       "email": "dummy3@gmail.com"
-//     },
-//     {
-//       "id": "2e59f16c-fa21-11ef-9670-c894028360ae",
-//       "username": "dummyUser5",
-//       "email": "dummy5@gmail.com"
-//     },
-//     {
-//       "id": "33d16282-fa21-11ef-9670-c894028360ae",
-//       "username": "dummyUser8",
-//       "email": "dummy8@gmail.com"
-//     },
-//     {
-//       "id": "3a6f99a1-fa21-11ef-9670-c894028360ae",
-//       "username": "dummyUser10",
-//       "email": "dummy10@gmail.com"
-//     },
-//     {
-//       "id": "3ebc5f74-fa21-11ef-9670-c894028360ae",
-//       "username": "dummyUser13",
-//       "email": "dummy13@gmail.com"
-//     },
-//     {
-//       "id": "454d63ae-fa21-11ef-9670-c894028360ae",
-//       "username": "dummyUser18",
-//       "email": "dummy18@gmail.com"
-//     },
-//     {
-//       "id": "4aff5f7e-fa21-11ef-9670-c894028360ae",
-//       "username": "dummyUser25",
-//       "email": "dummy25@gmail.com"
-//     },
-//     {
-//       "id": "50e15729-fa21-11ef-9670-c894028360ae",
-//       "username": "dummyUser30",
-//       "email": "dummy30@gmail.com"
-//     },
-//     {
-//       "id": "55a13bc4-fa21-11ef-9670-c894028360ae",
-//       "username": "dummyUser32",
-//       "email": "dummy32@gmail.com"
-//     },
-//     {
-//       "id": "5a8b66a4-fa21-11ef-9670-c894028360ae",
-//       "username": "dummyUser35",
-//       "email": "dummy35@gmail.com"
-//     },
-//     {
-//       "id": "60022f49-fa21-11ef-9670-c894028360ae",
-//       "username": "dummyUser36",
-//       "email": "dummy36@gmail.com"
-//     },
-//     {
-//       "id": "65faeffd-fa21-11ef-9670-c894028360ae",
-//       "username": "dummyUser40",
-//       "email": "dummy40@gmail.com"
-//     },
-//     {
-//       "id": "6a478eef-fa21-11ef-9670-c894028360ae",
-//       "username": "dummyUser42",
-//       "email": "dummy42@gmail.com"
-//     },
-//     {
-//       "id": "6e9d0e96-fa21-11ef-9670-c894028360ae",
-//       "username": "dummyUser45",
-//       "email": "dummy45@gmail.com"
-//     },
-//     {
-//       "id": "7334f60a-fa21-11ef-9670-c894028360ae",
-//       "username": "dummyUser48",
-//       "email": "dummy48@gmail.com"
-//     },
-//     {
-//       "id": "78296f59-fa21-11ef-9670-c894028360ae",
-//       "username": "dummyUser50",
-//       "email": "dummy50@gmail.com"
-//     },
-//     {
-//       "id": "d8228936-f962-11ef-9d69-c894028360ae",
-//       "username": "kartikbanga",
-//       "email": "kartikbanga@gmail.com"
-//     }
-//   ],
-//   "status": 200,
-//   "statusText": "OK",
-//   "headers": {
-//     "content-length": "1779",
-//     "content-type": "application/json; charset=utf-8"
-//   },
-//   "config": {
-//     "transitional": {
-//       "silentJSONParsing": true,
-//       "forcedJSONParsing": true,
-//       "clarifyTimeoutError": false
-//     },
-//     "adapter": [
-//       "xhr",
-//       "http",
-//       "fetch"
-//     ],
-//     "transformRequest": [
-//       null
-//     ],
-//     "transformResponse": [
-//       null
-//     ],
-//     "timeout": 0,
-//     "xsrfCookieName": "XSRF-TOKEN",
-//     "xsrfHeaderName": "X-XSRF-TOKEN",
-//     "maxContentLength": -1,
-//     "maxBodyLength": -1,
-//     "env": {},
-//     "headers": {
-//       "Accept": "application/json, text/plain, */*"
-//     },
-//     "method": "get",
-//     "url": "http://localhost:8000/api/v1/users/getAllUsers",
-//     "allowAbsoluteUrls": true
-//   },
-//   "request": {}
-//}

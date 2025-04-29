@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react'
+import { useInView } from "react-intersection-observer";
 import { useChatStore } from '../../store/useChatStore.ts'
 import { useAuthStore } from '../../store/useAuthStore.ts'
 import { formatDate, formatTime } from '../../utils/DataFormatFunctions.ts'
+
 import FileUploadComponent from './FileUploadComponent.tsx'
 
 const ChatContainer = () => {
@@ -21,6 +23,7 @@ const ChatContainer = () => {
 
   const { userId } = useAuthStore();
   const [text, setText] = useState("");
+  const [shouldTrackInView, setShouldTrackInView] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   //Group messages by date
@@ -41,6 +44,30 @@ const ChatContainer = () => {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, 500);
   };
+
+  const { ref: inViewRef, inView } = useInView({
+    triggerOnce: false,
+    threshold: 0.8,
+    skip: !shouldTrackInView,
+    onChange: (inView) => {
+      if (inView) {
+        const msg = groupedMessages[Object.keys(groupedMessages).reverse()[0]][0];
+        console.log("The element is inView.", inViewRef);
+        console.log("MessageID: ", msg.id);
+        console.log("SenderID: ", msg.sender_id);
+        console.log("ReceiverID: ", msg.receiver_id);
+        console.log("MessageCreatedAt: ", msg.created_at);
+      }
+    }
+  });
+
+  useEffect(() => {
+    const timer = setTimeout(()=> {
+      setShouldTrackInView(true);
+    },3);
+
+    return () => clearTimeout(timer);
+  }, [])
 
   useEffect(() => {
     getMessages();
@@ -68,7 +95,7 @@ const ChatContainer = () => {
         <>
           <div className="flex-1 p-4 bg-gray-950 overflow-y-auto">
               <div className="flex flex-col">
-                {Object.entries(groupedMessages).map(([date, dateMessages]) => (
+                {Object.entries(groupedMessages).reverse().map(([date, dateMessages], groupIndex) => (
                   <React.Fragment key={date}>
                     {/* Date Separator */}
                     <div className="flex justify-center my-4">
@@ -78,14 +105,12 @@ const ChatContainer = () => {
                     </div>
 
                     {/* Messages for this date */}
-                    {dateMessages.map((message) => (
+                    {dateMessages.map((message, messageIndex) => (
                       <div
-                        key={message.id}
-                        className={`flex mb-3 ${
-                          message.sender_id === userId
-                            ? "justify-end"
-                            : "justify-start"
-                        }`}
+                        key={ message.id }
+                        className={ `flex mb-3 ${ message.sender_id === userId ? "justify-end" : "justify-start"}` }
+                        // Tracker
+                        ref = {groupIndex == 0 && messageIndex == 0 ? inViewRef : null}
                       >
                         <div
                           className={`max-w-[80%] rounded-lg px-3 py-2 ${
