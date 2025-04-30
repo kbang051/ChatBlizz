@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { fileTypeFromBuffer } from 'file-type';
 import { pool, io, getReceiverSocketId } from "../index.js";
 import { uploadToS3 } from '../utils/s3Upload.js';
+import moment from 'moment';
 import redis from './redisClient.js';
 
 const fileUpload = async (req, res) => {
@@ -386,20 +387,21 @@ const displayFriendRequests = async (req, res) => {
 }
 
 const showConversation = async (req, res) => {
-  const { userId1, userId2, limit = 15 } = req.query;
-  console.log(`Request received at showConversation -- userId1: ${userId1}, userId2: ${userId2}, limit: ${limit}`);
+  const { userId1, userId2, timestamp } = req.query; //timestamp will be undefined, not null in case it is not present 
+  console.log(`Request received at showConversation -- userId1: ${userId1}, userId2: ${userId2}, timestamp: ${timestamp}`);
   if (!userId1 || !userId2) {
     return res.status(400).json({ message: 'Both userId1 and userId2 are required' });
   }
 
-  const fetchQuery = `SELECT * FROM messages 
+  const queryWithoutTimeStamp = `SELECT * FROM messages 
                       WHERE ((sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?))
                       ORDER BY created_at DESC 
                       LIMIT 15`;
 
-  // const fetchQuery = `SELECT * FROM messages 
-  //                     WHERE ((sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?))
-  //                     ORDER BY created_at ASC`;
+  const queryWithTimeStamp = `SELECT * FROM messages 
+                      WHERE ((sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)) AND created_at < ?
+                      ORDER BY created_at DESC 
+                      LIMIT 15`;
 
   const updateQuery =  `UPDATE messages 
                         SET delivered = TRUE, delivered_at = CURRENT_TIMESTAMP 
@@ -407,10 +409,16 @@ const showConversation = async (req, res) => {
                         AND sender_id = ? 
                         AND delivered = FALSE`;
 
-  const params = [userId1, userId2, userId2, userId1];
+  const formattedTimeStamp = moment(timestamp).format('YYYY-MM-DD HH:mm:ss');
+  
+  const paramsQueryWithoutTimeStamp = [userId1, userId2, userId2, userId1];
+  const paramsQueryWithTimeStamp = [userId1, userId2, userId2, userId1, formattedTimeStamp];
 
+  const query = (timestamp === undefined) ? queryWithoutTimeStamp : queryWithTimeStamp;
+  const params = (query === queryWithoutTimeStamp) ? paramsQueryWithoutTimeStamp : paramsQueryWithTimeStamp;
+  
   try {
-    const [messages] = await pool.query(fetchQuery, params);
+    const [messages] = await pool.query(query, params);
     console.log("Response sent by showConversation: ", messages);
 
     if (messages.length === 0) {

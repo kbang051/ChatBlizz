@@ -10,6 +10,7 @@ const ChatContainer = () => {
   const {
     messages,
     getMessages,
+    viewMessageOnScroll,
     isMessagesLoading,
     selectedUser,
     subscribeToMessages,
@@ -23,7 +24,7 @@ const ChatContainer = () => {
 
   const { userId } = useAuthStore();
   const [text, setText] = useState("");
-  const [shouldTrackInView, setShouldTrackInView] = useState(false);
+  const [isInViewActive, setIsInViewActive] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   //Group messages by date
@@ -48,8 +49,7 @@ const ChatContainer = () => {
   const { ref: inViewRef, inView } = useInView({
     triggerOnce: false,
     threshold: 0.8,
-    skip: !shouldTrackInView,
-    onChange: (inView) => {
+    onChange: async (inView) => {
       if (inView) {
         const msg = groupedMessages[Object.keys(groupedMessages).reverse()[0]][0];
         console.log("The element is inView.", inViewRef);
@@ -57,27 +57,31 @@ const ChatContainer = () => {
         console.log("SenderID: ", msg.sender_id);
         console.log("ReceiverID: ", msg.receiver_id);
         console.log("MessageCreatedAt: ", msg.created_at);
+        await viewMessageOnScroll(msg.created_at);
       }
     }
   });
 
   useEffect(() => {
-    const timer = setTimeout(()=> {
-      setShouldTrackInView(true);
-    },3);
-
-    return () => clearTimeout(timer);
-  }, [])
-
-  useEffect(() => {
-    getMessages();
+    setIsInViewActive(false); // First: immediately deactivate view tracking
+    console.log("User switched → isInViewActive set to false");
+    getMessages();  // Second: fetch messages & subscribe 
     subscribeToMessages();
-    return () => unsubscribeFromMessages();
+    scrollToBottom();
+    const timeout = setTimeout(() => { // Third: reactivate after 2 seconds
+      setIsInViewActive(true);
+      console.log("2s passed → isInViewActive set to true");
+    }, 2000);
+    // Cleanup
+    return () => {
+      clearTimeout(timeout);
+      unsubscribeFromMessages();
+    }
   }, [selectedUser, getMessages, subscribeToMessages, unsubscribeFromMessages]);
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+  // useEffect(() => {
+  //   scrollToBottom();
+  // }, []);
 
   return (
     <div className="flex flex-col h-full">
@@ -110,7 +114,7 @@ const ChatContainer = () => {
                         key={ message.id }
                         className={ `flex mb-3 ${ message.sender_id === userId ? "justify-end" : "justify-start"}` }
                         // Tracker
-                        ref = {groupIndex == 0 && messageIndex == 0 ? inViewRef : null}
+                        ref = {groupIndex == 0 && messageIndex == 0 && isInViewActive ? inViewRef : null}
                       >
                         <div
                           className={`max-w-[80%] rounded-lg px-3 py-2 ${

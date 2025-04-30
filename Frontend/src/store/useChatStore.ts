@@ -23,8 +23,9 @@ interface Message {
 
 interface ChatState {
     messages: Message[],
-    getMessages: () => Promise<void>,
+    getMessages: (timestamp?: string) => Promise<void>,
     setMessages: (newMessage: Message[]) => void,
+    viewMessageOnScroll: (timestamp?: string) => void;
     users: Users[],
     getUsers: () => Promise<void>,
     setUsers: (id: string, username: string, email: string) => void;
@@ -75,7 +76,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
         set({users: [...get().users, { id, username, email }]});
     },
 
-    getMessages: async () => {
+    getMessages: async (timestamp?: string) => {
+        console.log("TimeStamp; ", timestamp);
         console.log("getMessage is getting rendered")
         set({ isMessagesLoading: true });
         try {
@@ -90,10 +92,37 @@ export const useChatStore = create<ChatState>((set, get) => ({
               `http://localhost:8000/api/v1/users/showConversation`,
               { 
                 headers: { Authorization: `Bearer ${authenticationToken}` },
-                params: { userId1: userId, userId2: searchId, limit: 15 } 
+                params: { userId1: userId, userId2: searchId, timestamp: timestamp } 
               }
             );
             set({ messages: response.data });
+        } catch (error) {
+            toast.error("Failed to load messages");
+            console.error("Error loading messages:", error);
+        } finally {
+            set({ isMessagesLoading: false });
+        }
+    },
+
+    viewMessageOnScroll: async (timestamp?: string) => {
+        console.log("Request received at viewMessageOnScroll with timestamp: ", timestamp);
+        set({ isMessagesLoading: true });
+        try {
+            const { userId, authenticationToken } = useAuthStore.getState();
+            const searchId = get().selectedUser;
+            const openChat = get().openChat;
+            if (!userId || !searchId || !openChat) {
+                console.log(`Unable to fetch user message because something amongst these are missing --- User ID: ${userId}, Search ID: ${searchId}, Open Chat: ${openChat}`);
+                return;
+            }
+            const response = await axios.get(
+                `http://localhost:8000/api/v1/users/showConversation`,
+                { 
+                  headers: { Authorization: `Bearer ${authenticationToken}` },
+                  params: { userId1: userId, userId2: searchId, timestamp: timestamp } 
+                }
+            );
+            set({ messages: [...response.data, ...get().messages] })
         } catch (error) {
             toast.error("Failed to load messages");
             console.error("Error loading messages:", error);
@@ -116,7 +145,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
             openFileUploadSection: false,       
             messages: []             
         });
-        get().getMessages();         
+        //get().getMessages();         
     },
 
     setOpenFileUploadedSectionTrue: () => {
