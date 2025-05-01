@@ -23,9 +23,10 @@ interface Message {
 
 interface ChatState {
     messages: Message[],
+    scrolledMessages: Message[],
     getMessages: (timestamp?: string) => Promise<void>,
     setMessages: (newMessage: Message[]) => void,
-    viewMessageOnScroll: (timestamp?: string) => void;
+    viewMessageOnScroll: (timestamp?: string, messageId?: string) => void;
     users: Users[],
     getUsers: () => Promise<void>,
     setUsers: (id: string, username: string, email: string) => void;
@@ -46,6 +47,7 @@ interface ChatState {
 
 export const useChatStore = create<ChatState>((set, get) => ({
     messages: [],
+    scrolledMessages: [],
     users: [],
     selectedUser: null,
     isUsersLoading: false,
@@ -104,8 +106,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
         }
     },
 
-    viewMessageOnScroll: async (timestamp?: string) => {
-        console.log("Request received at viewMessageOnScroll with timestamp: ", timestamp);
+    viewMessageOnScroll: async (timestamp?: string, messageId?: string) => {
+        console.log("Request received at viewMessageOnScroll with timestamp: ", timestamp, "and messageId: ", messageId);
         set({ isMessagesLoading: true });
         try {
             const { userId, authenticationToken } = useAuthStore.getState();
@@ -119,10 +121,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
                 `http://localhost:8000/api/v1/users/showConversation`,
                 { 
                   headers: { Authorization: `Bearer ${authenticationToken}` },
-                  params: { userId1: userId, userId2: searchId, timestamp: timestamp } 
+                  params: { userId1: userId, userId2: searchId, timestamp: timestamp, messageId: messageId } 
                 }
             );
-            set({ messages: [...response.data, ...get().messages] })
+            set({ scrolledMessages: [...response.data] }); // temporary - can be removed, just for clarity
+            set({ messages: [...get().messages, ...get().scrolledMessages]}); // append previousMessages to originalMessages
         } catch (error) {
             toast.error("Failed to load messages");
             console.error("Error loading messages:", error);
@@ -133,7 +136,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     setMessages: (newMessage: Message[]) => {
         console.log("Messages have been reset by setMessage method")
-        set({messages: [...get().messages, ...newMessage]});
+        //set({messages: [...get().messages, ...newMessage]});
+        set({messages: [...newMessage, ...get().messages]});
     },
 
     setSelectedUser: (searchId: string) => {
@@ -184,7 +188,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
             const alreadyExists = messages.some((message) => message.id === response.data.id)
             if (!alreadyExists) {
                 console.log("Data received from sendMessage function:", response.data);
-                set({messages: [...messages, response.data]});
+                set({messages: [response.data, ...messages]});
+                //set({messages: [...messages, response.data]}); original
                 console.log("Message appended by sendMessage function")
             }
             console.log("Updated messages after sending new message:", get().messages);

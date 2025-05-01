@@ -10,5 +10,7 @@ Caching Friend Requests:
   The pending requests are currenty going to change for a user when he accepts/declines friendShip request.
   If there is not recent activity, this means we can display the old requests. Therefore, in this case 
   displayFriendRequest controller can send cached data. 
+
+  Modified timestamp to TIMESTAMP(3) in table messages, as it was causing errors at the time of infinite scrolling.
   
     

@@ -3,13 +3,13 @@ import { useInView } from "react-intersection-observer";
 import { useChatStore } from '../../store/useChatStore.ts'
 import { useAuthStore } from '../../store/useAuthStore.ts'
 import { formatDate, formatTime } from '../../utils/DataFormatFunctions.ts'
-
 import FileUploadComponent from './FileUploadComponent.tsx'
 
 const ChatContainer = () => {
   const {
     messages,
     getMessages,
+    scrolledMessages,
     viewMessageOnScroll,
     isMessagesLoading,
     selectedUser,
@@ -40,6 +40,10 @@ const ChatContainer = () => {
       }, {} as Record<string, typeof messages>);
   }, [messages])
 
+  useEffect(() => {
+    console.log("Grouped Messages: ", groupedMessages);
+  }, [groupedMessages])
+
   const scrollToBottom = () => {
     setTimeout(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -51,16 +55,22 @@ const ChatContainer = () => {
     threshold: 0.8,
     onChange: async (inView) => {
       if (inView) {
-        const msg = groupedMessages[Object.keys(groupedMessages).reverse()[0]][0];
-        console.log("The element is inView.", inViewRef);
+        //const msg = formattedGroupedMessage[Object.keys(formattedGroupedMessage).reverse()[0]][0];
+        console.log("Messages: ", messages);
+        const msg = messages[messages.length-1];
+        console.log("The element is inView.");
+        console.log("Message: ", msg.fileName ? msg.fileName : msg.message);
         console.log("MessageID: ", msg.id);
-        console.log("SenderID: ", msg.sender_id);
-        console.log("ReceiverID: ", msg.receiver_id);
         console.log("MessageCreatedAt: ", msg.created_at);
-        await viewMessageOnScroll(msg.created_at);
+        await viewMessageOnScroll(msg.created_at, msg.id);
       }
     }
   });
+
+  useEffect(() => {
+    console.log("New Scrolled Messages: ", scrolledMessages);
+    scrollToBottom();
+  }, [scrolledMessages])
 
   useEffect(() => {
     setIsInViewActive(false); // First: immediately deactivate view tracking
@@ -107,9 +117,8 @@ const ChatContainer = () => {
                         {formatDate(date)}
                       </div>
                     </div>
-
                     {/* Messages for this date */}
-                    {dateMessages.map((message, messageIndex) => (
+                    {[...dateMessages].reverse().map((message, messageIndex) => (
                       <div
                         key={ message.id }
                         className={ `flex mb-3 ${ message.sender_id === userId ? "justify-end" : "justify-start"}` }
@@ -123,7 +132,7 @@ const ChatContainer = () => {
                               : "bg-gray-700 text-amber-50"
                           }`}
                         >
-                          <div className="break-words">{message.message}</div>
+                          <div className="break-words">{ message.fileName ? message.fileName : message.message}</div>
                           <div
                             className={`text-xs mt-1 text-right ${
                               message.sender_id === userId
@@ -138,7 +147,7 @@ const ChatContainer = () => {
                     ))}
                   </React.Fragment>
                 ))}
-                <div ref={messagesEndRef} />
+                {/* <div ref={messagesEndRef} /> */}
               </div>
             </div>
 
