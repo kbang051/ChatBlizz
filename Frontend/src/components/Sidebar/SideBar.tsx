@@ -7,7 +7,14 @@ interface SideBarProps {
 }
 
 const SideBar: React.FC<SideBarProps> = ({ isOpen, onClose }) => {
-  const { users, setSelectedUser } = useChatStore(); // Accessing users from the chat store
+  
+  const { users, setSelectedUser, unreadMessage, filterUnreadMessage } = useChatStore(); // Accessing users from the chat store
+  
+  const checkId = (id: string) => {
+    const match = unreadMessage.find((item) => item.sender_id === id);
+    return match ? match.unread_count : 0;
+  }
+
   return (
     <>
       {/* Mobile overlay */}
@@ -36,16 +43,25 @@ const SideBar: React.FC<SideBarProps> = ({ isOpen, onClose }) => {
                 <a href="#" className="flex items-center p-2 text-gray-700 rounded-lg">
                   <div className="flex flex-col gap-2">
                     <div className="font-semibold">Friends</div>
-                      <ul className="py-1">
-                        {/* users contain id, username, and email */}
-                        {users.map((user) => { 
+                      <ul className="space-y-1">
+                        {users.map((user) => {
+                          const unreadCount = checkId(user.id);
                           return (
                             <li
-                              className="hover:bg-gray-100"
                               key={user.id}
-                              onClick={() => setSelectedUser(user.id)}
+                              onClick={() => {
+                                setSelectedUser(user.id);
+                                filterUnreadMessage(user.id);
+                              }}
+                              className="flex justify-between items-center px-3 py-2 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors"
                             >
-                              {user.username}
+                              <span className="text-gray-800 font-medium">{user.username}</span>
+
+                              {unreadCount > 0 && (
+                                <span className="bg-green-500 text-white text-xs font-semibold px-2 py-0.5 rounded-full ml-2">
+                                  {unreadCount}
+                                </span>
+                              )}
                             </li>
                           );
                         })}

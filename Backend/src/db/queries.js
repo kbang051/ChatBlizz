@@ -480,6 +480,25 @@ const showConversation = async (req, res) => {
   }
 };
 
+const showUnreadMessages = async (req, res) => {
+  const { userId } = req.query;
+  if (!userId || userId === undefined)
+      return res.status(400).json({ message: "userId is required to fetch messages" });
+  const query = `SELECT sender_id, COUNT(*) AS unread_count 
+                 FROM messages 
+                 WHERE receiver_id = ? AND delivered = FALSE 
+                 GROUP BY sender_id`;
+  try {
+    const [result] = await pool.query(query, [userId]);
+    console.log("Unread messages:")
+    console.log(result);
+    return res.status(200).send(result);
+  } catch (error) {
+    console.log("Error while fetching unread messages: ", error);
+    return res.status(500).json({error: error})
+  }
+}
+
 export { 
   fileUpload, 
   saveMessage, 
@@ -490,5 +509,6 @@ export {
   sendFriendRequest, 
   acceptFriendRequest, 
   displayFriendRequests, 
-  showConversation 
+  showConversation,
+  showUnreadMessages 
 };

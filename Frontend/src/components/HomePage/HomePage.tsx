@@ -12,8 +12,8 @@ import "react-toastify/dist/ReactToastify.css";
 const HomePage = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  //const { getUsers, openChat, openFileUploadSection } = useChatStore();
-  const { getUsers, openChat, openFileUploadSection, subscribeToQuickNotifications, notifications } = useChatStore();
+  const { userId } = useAuthStore();
+  const { getUsers, openChat, openFileUploadSection, subscribeToQuickNotifications, getUnreadMessages } = useChatStore();
   const { searchAllProfiles } = useUserSearchStore();
   //Load friend list on mount 
   useEffect(() => {
@@ -23,6 +23,11 @@ const HomePage = () => {
   useEffect(() => {
     subscribeToQuickNotifications();
   }, []);
+
+  useEffect(() => {
+    if (!userId) return; // don't run until userId is available
+    getUnreadMessages(userId);
+  }, [userId]);
 
   return (
     <div>

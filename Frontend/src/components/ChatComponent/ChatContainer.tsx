@@ -25,6 +25,7 @@ const ChatContainer = () => {
   const { userId } = useAuthStore();
   const [text, setText] = useState("");
   const [isInViewActive, setIsInViewActive] = useState(false);
+  const [counterMessageSent, setCounterMessageSent] = useState(0); // Used to track if a msg is sent by the user or not. If yes, scroll down happens. 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   //Group messages by date
@@ -66,18 +67,17 @@ const ChatContainer = () => {
       }
     }
   });
-
+  
   useEffect(() => {
-    console.log("New Scrolled Messages: ", scrolledMessages);
+    console.log("Scroll to bottom has been called");
     scrollToBottom();
-  }, [scrolledMessages])
+  }, [selectedUser, counterMessageSent])
 
   useEffect(() => {
     setIsInViewActive(false); // First: immediately deactivate view tracking
     console.log("User switched → isInViewActive set to false");
     getMessages();  // Second: fetch messages & subscribe 
     subscribeToMessages();
-    scrollToBottom();
     const timeout = setTimeout(() => { // Third: reactivate after 2 seconds
       setIsInViewActive(true);
       console.log("2s passed → isInViewActive set to true");
@@ -88,10 +88,6 @@ const ChatContainer = () => {
       unsubscribeFromMessages();
     }
   }, [selectedUser, getMessages, subscribeToMessages, unsubscribeFromMessages]);
-
-  // useEffect(() => {
-  //   scrollToBottom();
-  // }, []);
 
   return (
     <div className="flex flex-col h-full">
@@ -153,7 +149,7 @@ const ChatContainer = () => {
                     ))}
                   </React.Fragment>
                 ))}
-                {/* <div ref={messagesEndRef} /> */}
+                <div ref={messagesEndRef} />
               </div>
             </div>
 
@@ -195,6 +191,7 @@ const ChatContainer = () => {
                     if (e.key === "Enter" && text.trim() !== "") {
                       sendMessage(text);
                       setText("");
+                      setCounterMessageSent((prev) => prev+1);
                     }
                   }}
                 />
@@ -206,6 +203,7 @@ const ChatContainer = () => {
                     if (text.trim() !== "") {
                       sendMessage(text);
                       setText("");
+                      setCounterMessageSent((prev) => prev+1);
                     }
                   }}
                 >

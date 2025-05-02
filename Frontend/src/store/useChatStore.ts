@@ -31,12 +31,20 @@ interface Notifications {
     created_at: string,
 }
 
+interface UnreadMessage {
+    sender_id: string,
+    unread_count: number
+}
+
 interface ChatState {
     messages: Message[],
     notifications: Notifications[],
+    unreadMessage: UnreadMessage[],
     scrolledMessages: Message[],
     getMessages: (timestamp?: string) => Promise<void>,
     setMessages: (newMessage: Message[]) => void,
+    getUnreadMessages: (userId: string) => void,
+    filterUnreadMessage: (userId: string) => void,
     viewMessageOnScroll: (timestamp?: string, messageId?: string) => void;
     users: Users[],
     getUsers: () => Promise<void>,
@@ -60,6 +68,7 @@ interface ChatState {
 export const useChatStore = create<ChatState>((set, get) => ({
     messages: [],
     notifications: [],
+    unreadMessage: [],
     scrolledMessages: [],
     users: [],
     selectedUser: null,
@@ -117,6 +126,29 @@ export const useChatStore = create<ChatState>((set, get) => ({
         } finally {
             set({ isMessagesLoading: false });
         }
+    },
+
+    getUnreadMessages: async (userId: string) => {
+        console.log("Request sent to backend to fetch unread messages");
+        try {
+            const { authenticationToken } = useAuthStore.getState();
+            if (userId === null || userId === undefined || userId === "") {
+                return;
+            }
+            const res = await axios.get('http://localhost:8000/api/v1/users/getUnreadMessages', {
+                headers: { Authorization: `Bearer ${authenticationToken}`},
+                params: { userId: userId }
+            })
+            set({ unreadMessage: res.data });
+        } catch (error) {
+            console.log("Error in getUnreadMessages: ", error);
+            return;
+        }
+    },
+
+    filterUnreadMessage: (userId: string) => {
+        const array = get().unreadMessage;
+        set({unreadMessage: array.filter((item) => item.sender_id !== userId)});
     },
 
     viewMessageOnScroll: async (timestamp?: string, messageId?: string) => {
@@ -234,6 +266,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     subscribeToQuickNotifications: () => {
         const socket = useAuthStore.getState().socket;
+        const { selectedUser, unreadMessage } = get();
         if (!socket) {
             console.log("SocketId not available for notifications: ", socket);
             return;
@@ -246,6 +279,16 @@ export const useChatStore = create<ChatState>((set, get) => ({
             set({ notifications: [notification, ...get().notifications ] }); // will display notifications that have been received only in last 5 minutes
             console.log("New notification received and notifications has been appended to notifications[]: ", ...get().notifications);
             toast(React.createElement(NotificationToast, { notification }));
+            // unread messages
+            if (notification.sender_id !== selectedUser) {
+              const findPerson = unreadMessage.find((item) => item.sender_id === notification.sender_id);
+              if (!findPerson) {
+                set({ unreadMessage: [ ...unreadMessage, { sender_id: notification.sender_id, unread_count: 1 } ] });
+              } else {
+                const updateUnread = unreadMessage.map((item) => item.sender_id === notification.sender_id ? { ...item, unread_count: item.unread_count + 1 } : item );
+                set({ unreadMessage: [ ...unreadMessage, ...updateUnread ] });
+              }
+            }
         }) 
     },
 
