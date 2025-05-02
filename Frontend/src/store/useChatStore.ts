@@ -40,12 +40,14 @@ interface ChatState {
     messages: Message[],
     notifications: Notifications[],
     unreadMessage: UnreadMessage[],
+    unreadInitialized: boolean,
+    setUnreadInitializedTrue: () => void,
     scrolledMessages: Message[],
     getMessages: (timestamp?: string) => Promise<void>,
     setMessages: (newMessage: Message[]) => void,
-    getUnreadMessages: (userId: string) => void,
+    getUnreadMessages: (userId: string) => Promise<boolean>,
     filterUnreadMessage: (userId: string) => void,
-    viewMessageOnScroll: (timestamp?: string, messageId?: string) => void;
+    viewMessageOnScroll: (timestamp?: string, messageId?: string) => Promise<void>;
     users: Users[],
     getUsers: () => Promise<void>,
     setUsers: (id: string, username: string, email: string) => void;
@@ -69,6 +71,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     messages: [],
     notifications: [],
     unreadMessage: [],
+    unreadInitialized: false, // listen to notifications and then update unread messages after unread messages are properly initialized 
     scrolledMessages: [],
     users: [],
     selectedUser: null,
@@ -133,22 +136,28 @@ export const useChatStore = create<ChatState>((set, get) => ({
         try {
             const { authenticationToken } = useAuthStore.getState();
             if (userId === null || userId === undefined || userId === "") {
-                return;
+                return false;
             }
             const res = await axios.get('http://localhost:8000/api/v1/users/getUnreadMessages', {
                 headers: { Authorization: `Bearer ${authenticationToken}`},
                 params: { userId: userId }
             })
             set({ unreadMessage: res.data });
+            return true;
         } catch (error) {
             console.log("Error in getUnreadMessages: ", error);
-            return;
+            return false; // Ensure a boolean is always returned
         }
+    },
+
+    setUnreadInitializedTrue: () => {
+        set({ unreadInitialized: true });
     },
 
     filterUnreadMessage: (userId: string) => {
         const array = get().unreadMessage;
         set({unreadMessage: array.filter((item) => item.sender_id !== userId)});
+        console.log("Unread message after filtering: ", get().unreadMessage);
     },
 
     viewMessageOnScroll: async (timestamp?: string, messageId?: string) => {
@@ -250,7 +259,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
         if (!selectedUser) return;
         const socket = useAuthStore.getState().socket;
         socket.on("receive_message", (newMessage: Message) => {
-            console.log("New message received without set:", newMessage);
             const isMessageFromSelectedUser = newMessage.sender_id === selectedUser;
             if (!isMessageFromSelectedUser) 
                 return;
@@ -260,37 +268,77 @@ export const useChatStore = create<ChatState>((set, get) => ({
                 set({messages: [newMessage, ...get().messages ]});
                 console.log("Message appended by subscribeToMessages function")
             }
-            console.log("New message received with set:", newMessage);
         })
     },
 
+    // subscribeToQuickNotifications: () => {
+    //     const socket = useAuthStore.getState().socket;
+    //     const { selectedUser, unreadMessage } = get();
+    //     if (!socket) {
+    //         console.log("SocketId not available for notifications: ", socket);
+    //         return;
+    //     }
+    //     socket.off("receive_notification");
+    //     socket.on("receive_notification", (notification: Notifications) => {
+    //         console.log("New message received without set:", notification);
+    //         if (notification === null || notification === undefined) 
+    //             return;
+    //         set({ notifications: [notification, ...get().notifications ] }); // will display notifications that have been received only in last 5 minutes
+    //         console.log("New notification received and notifications has been appended to notifications[]: ", ...get().notifications);
+    //         toast(React.createElement(NotificationToast, { notification }));
+    //         // unread messages
+    //         console.log(`Notification id - ${notification.sender_id} and selectedUser - ${selectedUser}`);
+    //         if (notification.sender_id !== selectedUser) {
+    //           const findPerson = unreadMessage.find((item) => item.sender_id === notification.sender_id);
+    //           if (!findPerson) {
+    //             console.log(`Couldn't find any previous notification from sender - ${notification.sender_id} in unreadMessage`);
+    //             set({ unreadMessage: [ ...unreadMessage, { sender_id: notification.sender_id, unread_count: 1 } ] });
+    //             console.log("Updated unread messages: ", get().unreadMessage);
+    //           } else {
+    //             console.log(`Found previous notification from sender - ${notification.sender_id} in unreadMessage`);
+    //             const updateUnread = unreadMessage.map((item) => item.sender_id === notification.sender_id ? { ...item, unread_count: item.unread_count + 1 } : item );
+    //             set({ unreadMessage: updateUnread });
+    //             console.log("Updated unread messages: ", get().unreadMessage);
+    //           }
+    //         }
+    //     }) 
+    // },
+
     subscribeToQuickNotifications: () => {
         const socket = useAuthStore.getState().socket;
-        const { selectedUser, unreadMessage } = get();
         if (!socket) {
-            console.log("SocketId not available for notifications: ", socket);
-            return;
+          console.log("SocketId not available for notifications: ", socket);
+          return;
         }
+      
         socket.off("receive_notification");
         socket.on("receive_notification", (notification: Notifications) => {
-            console.log("New message received without set:", notification);
-            if (notification === null || notification === undefined) 
-                return;
-            set({ notifications: [notification, ...get().notifications ] }); // will display notifications that have been received only in last 5 minutes
-            console.log("New notification received and notifications has been appended to notifications[]: ", ...get().notifications);
-            toast(React.createElement(NotificationToast, { notification }));
-            // unread messages
-            if (notification.sender_id !== selectedUser) {
-              const findPerson = unreadMessage.find((item) => item.sender_id === notification.sender_id);
-              if (!findPerson) {
-                set({ unreadMessage: [ ...unreadMessage, { sender_id: notification.sender_id, unread_count: 1 } ] });
-              } else {
-                const updateUnread = unreadMessage.map((item) => item.sender_id === notification.sender_id ? { ...item, unread_count: item.unread_count + 1 } : item );
-                set({ unreadMessage: [ ...unreadMessage, ...updateUnread ] });
-              }
+          console.log("New message received without set:", notification);
+          if (!notification) return;
+      
+          const { selectedUser, unreadMessage, notifications, unreadInitialized } = get();
+      
+          set({ notifications: [notification, ...notifications] });
+          toast(React.createElement(NotificationToast, { notification }));
+      
+          console.log(`Notification id - ${notification.sender_id} and selectedUser - ${selectedUser}`);
+      
+          if (unreadInitialized && notification.sender_id !== selectedUser) {
+            const findPerson = unreadMessage.find((item) => String(item.sender_id) === String(notification.sender_id));
+      
+            if (!findPerson) {
+              console.log(`Couldn't find any previous notification from sender - ${notification.sender_id} in unreadMessage`);
+              set({ unreadMessage: [...unreadMessage, { sender_id: notification.sender_id, unread_count: 1 }]});
+            } else {
+              console.log(`Found previous notification from sender - ${notification.sender_id} in unreadMessage`);
+              const updateUnread = unreadMessage.map((item) => String(item.sender_id) === String(notification.sender_id) ? { ...item, unread_count: item.unread_count + 1 } : item);
+              set({ unreadMessage: updateUnread });
             }
-        }) 
-    },
+      
+            console.log("Updated unread messages: ", get().unreadMessage);
+          }
+        });
+      },
 
     unsubscribeFromMessages: () => {
         const socket = useAuthStore.getState().socket;

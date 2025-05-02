@@ -13,7 +13,14 @@ const HomePage = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const { userId } = useAuthStore();
-  const { getUsers, openChat, openFileUploadSection, subscribeToQuickNotifications, getUnreadMessages } = useChatStore();
+  const {
+    getUsers,
+    openChat,
+    openFileUploadSection,
+    subscribeToQuickNotifications,
+    getUnreadMessages,
+    setUnreadInitializedTrue,
+  } = useChatStore();
   const { searchAllProfiles } = useUserSearchStore();
   //Load friend list on mount 
   useEffect(() => {
@@ -26,7 +33,10 @@ const HomePage = () => {
 
   useEffect(() => {
     if (!userId) return; // don't run until userId is available
-    getUnreadMessages(userId);
+    getUnreadMessages(userId).then((success) => {
+      if (success)
+        setUnreadInitializedTrue();
+    });
   }, [userId]);
 
   return (
