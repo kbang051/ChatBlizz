@@ -50,9 +50,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     connectSocket: () => {
         const { userId, authenticationToken } = get();
-        const socket = io("http://localhost:8000", {
-          auth: { token: authenticationToken },
-        }); 
+        const socket = io("http://localhost:8000", { auth: { token: authenticationToken } }); 
         socket.connect();
         set({ socket: socket });
         if (userId) 

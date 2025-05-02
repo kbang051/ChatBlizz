@@ -132,7 +132,13 @@ const ChatContainer = () => {
                               : "bg-gray-700 text-amber-50"
                           }`}
                         >
-                          <div className="break-words">{ message.fileName ? message.fileName : message.message}</div>
+                          <div className="break-words">
+                            { message.fileName ? (
+                              <a href = {message.message} target='_blank' rel="noopener noreferrer" className="text-blue-200 underline">
+                                {message.fileName}
+                              </a>
+                            ) : message.message }
+                          </div>
                           <div
                             className={`text-xs mt-1 text-right ${
                               message.sender_id === userId

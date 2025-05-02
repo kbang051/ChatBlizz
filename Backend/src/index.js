@@ -47,11 +47,11 @@ const io = new Server(server, {
   }
 })
 
+const userSocketMap = {} // {userId: socketId}
+
 const getReceiverSocketId = (userId) => {
   return userSocketMap[userId]
 }
-
-const userSocketMap = {} // {userId: socketId}
 
 io.use(socketAuth);
 io.on("connection", connectUser);

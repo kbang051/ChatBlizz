@@ -61,11 +61,22 @@ const fileUpload = async (req, res) => {
           created_at: new Date().toISOString(),
         };
 
+        const notification = {
+          sender_id: sender_id,
+          id: messageId,
+          message: fileUrl,
+          fileName: file.originalname,
+          created_at: new Date().toISOString(),
+        }
+
         const receiverSocketId = getReceiverSocketId(receiver_id);
 
         if (receiverSocketId) {
           io.to(receiverSocketId).emit("receive_message", messageToSend);
-          //console.log("Message sent to the receiver successfully: ", messageToSend);
+          
+          //new addition --- notifications
+          io.to(receiverSocketId).emit("receive_notification", notification);
+
           await pool.query(`UPDATE messages SET delivered = TRUE, delivered_at = CURRENT_TIMESTAMP WHERE receiver_id = ? AND delivered = FALSE`, [receiver_id]);
         } // Mark as delivered
 
@@ -111,8 +122,20 @@ const saveMessage = async (req, res) => {
       created_at: new Date().toISOString()
     };
 
+    const notification = {
+      sender_id: sender_id,
+      id: messageId,
+      message: content,
+      fileName: null,
+      created_at: new Date().toISOString(),
+    }
+
     if (receiverSocketId) {
-      io.to(receiverSocketId).emit("receive_message", messageToSend)
+      io.to(receiverSocketId).emit("receive_message", messageToSend);
+
+      //new addition --- notifications
+      io.to(receiverSocketId).emit("receive_notification", notification);
+      
       console.log("Message sent to the receiver successfully from backend as the user is online: ", content);
       await pool.query(`UPDATE messages SET delivered = TRUE, delivered_at = CURRENT_TIMESTAMP WHERE receiver_id = ? AND delivered = FALSE`, [receiver_id]);
     } // Mark as delivered
@@ -390,59 +413,6 @@ const displayFriendRequests = async (req, res) => {
     return res.status(500).json({ error: "Internal Server Error" });
   }
 }
-
-// const showConversation = async (req, res) => {
-//   const { userId1, userId2, timestamp } = req.query; //timestamp will be undefined, not null in case it is not present 
-//   console.log(`Request received at showConversation -- userId1: ${userId1}, userId2: ${userId2}, timestamp: ${timestamp}`);
-//   if (!userId1 || !userId2) {
-//     return res.status(400).json({ message: 'Both userId1 and userId2 are required' });
-//   }
-
-//   const queryWithoutTimeStamp = `SELECT * FROM messages 
-//                       WHERE ((sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?))
-//                       ORDER BY created_at DESC 
-//                       LIMIT 15`;
-
-//   const queryWithTimeStamp = `SELECT * FROM messages 
-//                       WHERE ((sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)) AND created_at < ?
-//                       ORDER BY created_at DESC 
-//                       LIMIT 15`;
-
-//   const updateQuery =  `UPDATE messages 
-//                         SET delivered = TRUE, delivered_at = CURRENT_TIMESTAMP 
-//                         WHERE receiver_id = ? 
-//                         AND sender_id = ? 
-//                         AND delivered = FALSE`;
-
-//   // const formattedTimeStamp = moment.utc(timestamp).format('YYYY-MM-DD HH:mm:ss');
-//   // console.log("Formatted Timestamp at Backend", formattedTimeStamp);
-  
-//   const paramsQueryWithoutTimeStamp = [userId1, userId2, userId2, userId1];
-//   const paramsQueryWithTimeStamp = [userId1, userId2, userId2, userId1, timestamp];
-
-//   const query = (timestamp === undefined) ? queryWithoutTimeStamp : queryWithTimeStamp;
-//   const params = (query === queryWithoutTimeStamp) ? paramsQueryWithoutTimeStamp : paramsQueryWithTimeStamp;
-  
-//   try {
-//     const [messages] = await pool.query(query, params);
-//     console.log("Response sent by showConversation: ", messages);
-
-//     if (messages.length === 0) {
-//       return res.status(200).json([]);
-//     }
-//     // Send response first
-//     res.status(200).send(messages);
-
-//     // Update delivered status in the database
-//     await pool.query(updateQuery, [userId1, userId2]);
-
-//   } catch (error) {
-//     console.error("Database error:", error);
-//     if (!res.headersSent) {
-//       return res.status(500).json({ message: "Internal server error" });
-//     }
-//   }
-// };
 
 const showConversation = async (req, res) => {
   const { userId1, userId2, timestamp, messageId } = req.query;

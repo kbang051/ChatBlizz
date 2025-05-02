@@ -1,8 +1,10 @@
-import { create } from "zustand";
-import toast from "react-hot-toast";
+import React from "react";
 import axios from "axios";
+import { toast } from "react-toastify";
+import { create } from "zustand";
 import { useAuthStore } from "./useAuthStore.ts";
 import { useUserSearchStore } from "./useUserSearchStore.ts";
+import NotificationToast from "../toasts/notification.tsx";
 
 interface Users {
     id: string,
@@ -21,8 +23,17 @@ interface Message {
     created_at: string;
 }
 
+interface Notifications {
+    sender_id: string,
+    id: string, // messageId
+    message: string,
+    filename: string,
+    created_at: string,
+}
+
 interface ChatState {
     messages: Message[],
+    notifications: Notifications[],
     scrolledMessages: Message[],
     getMessages: (timestamp?: string) => Promise<void>,
     setMessages: (newMessage: Message[]) => void,
@@ -38,6 +49,7 @@ interface ChatState {
     openFileUploadSection: boolean,
     sendMessage: (content: string) => Promise<void>,
     subscribeToMessages: () => void,
+    subscribeToQuickNotifications: () => void,
     unsubscribeFromMessages: () => void,
     setOpenChatTrue: () => void,
     setOpenChatFalse: () => void,
@@ -47,6 +59,7 @@ interface ChatState {
 
 export const useChatStore = create<ChatState>((set, get) => ({
     messages: [],
+    notifications: [],
     scrolledMessages: [],
     users: [],
     selectedUser: null,
@@ -65,9 +78,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
               {headers: { Authorization: `Bearer ${authenticationToken}` }}
             );
             set({ users: response.data});
-            toast.success("Users loaded successfully");
+            //toast.success("Users loaded successfully");
         } catch (error) {
-            toast.error("Failed to load users");
+            //toast.error("Failed to load users");
             console.error("Error loading users:", error);
         } finally {
             set({ isUsersLoading: false });
@@ -99,7 +112,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
             );
             set({ messages: response.data });
         } catch (error) {
-            toast.error("Failed to load messages");
+            //toast.error("Failed to load messages");
             console.error("Error loading messages:", error);
         } finally {
             set({ isMessagesLoading: false });
@@ -108,6 +121,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     viewMessageOnScroll: async (timestamp?: string, messageId?: string) => {
         console.log("Request received at viewMessageOnScroll with timestamp: ", timestamp, "and messageId: ", messageId);
+        const { isMessagesLoading } = get();
+        if (isMessagesLoading)  // new request is sent to the backend only when the previous request has finished its execution
+            return;
         set({ isMessagesLoading: true });
         try {
             const { userId, authenticationToken } = useAuthStore.getState();
@@ -127,7 +143,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
             set({ scrolledMessages: [...response.data] }); // temporary - can be removed, just for clarity
             set({ messages: [...get().messages, ...get().scrolledMessages]}); // append previousMessages to originalMessages
         } catch (error) {
-            toast.error("Failed to load messages");
+            //toast.error("Failed to load messages");
             console.error("Error loading messages:", error);
         } finally {
             set({ isMessagesLoading: false });
@@ -148,8 +164,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
             openChat: true,   
             openFileUploadSection: false,       
             messages: []             
-        });
-        //get().getMessages();         
+        });         
     },
 
     setOpenFileUploadedSectionTrue: () => {
@@ -194,7 +209,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
             }
             console.log("Updated messages after sending new message:", get().messages);
         } catch (error: any) {
-            toast.error("Unable to send message", error.response.data.message);
+            //toast.error("Unable to send message", error.response.data.message);
         }
     },
 
@@ -209,11 +224,29 @@ export const useChatStore = create<ChatState>((set, get) => ({
                 return;
             const alreadyExists = get().messages.some((message) => message.id === newMessage.id);
             if (!alreadyExists) {
-                set({messages: [...get().messages, newMessage]});
+                //set({messages: [...get().messages, newMessage]});
+                set({messages: [newMessage, ...get().messages ]});
                 console.log("Message appended by subscribeToMessages function")
             }
             console.log("New message received with set:", newMessage);
         })
+    },
+
+    subscribeToQuickNotifications: () => {
+        const socket = useAuthStore.getState().socket;
+        if (!socket) {
+            console.log("SocketId not available for notifications: ", socket);
+            return;
+        }
+        socket.off("receive_notification");
+        socket.on("receive_notification", (notification: Notifications) => {
+            console.log("New message received without set:", notification);
+            if (notification === null || notification === undefined) 
+                return;
+            set({ notifications: [notification, ...get().notifications ] }); // will display notifications that have been received only in last 5 minutes
+            console.log("New notification received and notifications has been appended to notifications[]: ", ...get().notifications);
+            toast(React.createElement(NotificationToast, { notification }));
+        }) 
     },
 
     unsubscribeFromMessages: () => {
