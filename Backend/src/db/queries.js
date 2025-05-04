@@ -121,7 +121,7 @@ const saveMessage = async (req, res) => {
       delivered: true,
       created_at: new Date().toISOString()
     };
-
+    
     const notification = {
       sender_id: sender_id,
       id: messageId,
@@ -129,6 +129,18 @@ const saveMessage = async (req, res) => {
       fileName: null,
       created_at: new Date().toISOString(),
     }
+
+    // const sortedIds = [sender_id, receiver_id].sort();
+    // const redisKey = `messages:${sortedIds[0]}:${sortedIds[1]}`;
+    // const cacheFlagKey = `messages:loaded:${sortedIds[0]}:${sortedIds[1]}`;
+
+    // const cacheLoaded = await redis.get(cacheFlagKey);
+    // const messageJson = JSON.stringify(messageToSend);
+
+    // if (cacheLoaded === "true") {
+    //   await redis.lpush(redisKey, messageJson);
+    //   await redis.ltrim(redisKey, 0, 14)
+    // }
 
     if (receiverSocketId) {
       io.to(receiverSocketId).emit("receive_message", messageToSend);
@@ -404,8 +416,6 @@ const displayFriendRequests = async (req, res) => {
     } else if (results.length > 0) {
       const end = Date.now();
       console.log(`🛢️ Cache miss (DB fetch) - Time taken: ${end - start} ms`);
-      // console.log("Friend Request Response");
-      // console.log(results);
       return res.status(200).send(results);
     }
   } catch (error) {
@@ -422,6 +432,25 @@ const showConversation = async (req, res) => {
   if (!userId1 || !userId2) {
     return res.status(400).json({ message: 'Both userId1 and userId2 are required' });
   }
+
+  // const sortedIds = [userId1, userId2].sort();
+  // const redisKey = `messages:${sortedIds[0]}:${sortedIds[1]}`;
+  // const cacheFlagKey = `messages:loaded:${sortedIds[0]}:${sortedIds[1]}`;
+
+  // // Check if cache is fully loaded
+  // const cacheLoaded = await redis.get(cacheFlagKey);
+
+  // //redis caching ---- cache hit
+  // if ( timestamp === undefined || messageId === undefined  ) {
+  //   if (cacheLoaded === "true") {
+  //     console.log("----------------Cache hit------------------------");
+  //     const messages = await redis.lrange(redisKey, 0, -1);
+  //     const parsedMessages = messages.map(msg => JSON.parse(msg));
+  //     console.log("-----------------Message response sent from cache--------------------");
+  //     console.log(parsedMessages);
+  //     return res.status(200).send(parsedMessages);
+  //   }
+  // }
 
   let localConvertedTime = "";
   if (timestamp !== undefined) {
@@ -462,11 +491,18 @@ const showConversation = async (req, res) => {
   try {
     const [messages] = await pool.query(query, params);
     console.log("Response sent by showConversation: ", messages);
-
-    if (messages.length === 0) {
-      return res.status(200).json([]);
-    }
-
+    
+    // cache only latest messages ---- cache miss
+    // if (timestamp === undefined || messageId === undefined) {
+    //   await redis.del(redisKey);
+    //   const msgReversed = [...messages].reverse();
+    //   for (const msg of msgReversed) {  // this is because lpush inserts at the head, and not at the tail.
+    //     await redis.lpush(redisKey, JSON.stringify(msg));
+    //   }
+    // }
+    // //redis flag key set to true
+    // await redis.set(cacheFlagKey, "true");
+    
     res.status(200).send(messages);
 
     // Background update: set delivered = true for unseen messages
