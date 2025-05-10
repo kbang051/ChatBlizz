@@ -2,7 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { fileTypeFromBuffer } from 'file-type';
 import { pool, io, getReceiverSocketId } from "../index.js";
 import { uploadToS3 } from '../utils/s3Upload.js';
-import redis from './redisClient.js';
+import { redis } from './redisClient.js';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc.js';
 import timezone from 'dayjs/plugin/timezone.js';
@@ -92,7 +92,6 @@ const fileUpload = async (req, res) => {
 };
 
 const saveMessage = async (req, res) => {
-  const query = `INSERT INTO messages (id, sender_id, receiver_id, message, created_at, delivered) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, FALSE)`;
   try {
     const { sender_id, receiver_id, content } = req.body;
     if (!sender_id || !receiver_id || !content || content.trim() === "") {
@@ -101,63 +100,80 @@ const saveMessage = async (req, res) => {
     }
     //1. Store message in DB
     const messageId = uuidv4();
-    const [insertMessage] = await pool.query(query, [messageId, sender_id, receiver_id, content.trim()]);
-    console.log("Message inserted successfully in the message table");
-
-    //2. Attempt real-time delivery
-    const receiverSocketId = getReceiverSocketId(receiver_id);
     
-    //person is offline
-    if (!receiverSocketId)
-      console.log("The receiver is offline so maybe we are unable to read receiverSocketId in saveMessage controller or there is some problem in the controller")
-    
-    const messageToSend = {
+    const messagePayload = {
       id: messageId,
       sender_id,
       receiver_id,
       message: content,
       message_type: "text", //newly added
       fileName: null, //newly added
-      delivered: true,
+      delivered: false,
       created_at: new Date().toISOString()
     };
-    
-    const notification = {
-      sender_id: sender_id,
-      id: messageId,
-      message: content,
-      fileName: null,
-      created_at: new Date().toISOString(),
-    }
-
-    // const sortedIds = [sender_id, receiver_id].sort();
-    // const redisKey = `messages:${sortedIds[0]}:${sortedIds[1]}`;
-    // const cacheFlagKey = `messages:loaded:${sortedIds[0]}:${sortedIds[1]}`;
-
-    // const cacheLoaded = await redis.get(cacheFlagKey);
-    // const messageJson = JSON.stringify(messageToSend);
-
-    // if (cacheLoaded === "true") {
-    //   await redis.lpush(redisKey, messageJson);
-    //   await redis.ltrim(redisKey, 0, 14)
-    // }
-
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit("receive_message", messageToSend);
-
-      //new addition --- notifications
-      io.to(receiverSocketId).emit("receive_notification", notification);
-      
-      console.log("Message sent to the receiver successfully from backend as the user is online: ", content);
-      await pool.query(`UPDATE messages SET delivered = TRUE, delivered_at = CURRENT_TIMESTAMP WHERE receiver_id = ? AND delivered = FALSE`, [receiver_id]);
-    } // Mark as delivered
-
-    return res.status(200).send(messageToSend)
+    await redis.publish("MESSAGES", JSON.stringify(messagePayload));
+    return res.status(200).json({ message: "Message published successfully" });
   } catch (error) {
-    console.error("Unable to insert message: ", error);
+    console.error("Failed to publish message: ", error);
     return res.status(500).json({message: 'Failed to save message'});
   }
 };
+
+// const saveMessage = async (req, res) => {
+//   const query = `INSERT INTO messages (id, sender_id, receiver_id, message, created_at, delivered) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, FALSE)`;
+//   try {
+//     const { sender_id, receiver_id, content } = req.body;
+//     if (!sender_id || !receiver_id || !content || content.trim() === "") {
+//       console.log(`sender_id or receiver_id or content is missing --- sender_id: ${sender_id}, receiver_id: ${receiver_id}, content: ${content}`);
+//       return res.status(400).json({message: `sender_id or receiver_id or content is missing --- sender_id: ${sender_id}, receiver_id: ${receiver_id}, content: ${content}`});
+//     }
+//     //1. Store message in DB
+//     const messageId = uuidv4();
+//     const [insertMessage] = await pool.query(query, [messageId, sender_id, receiver_id, content.trim()]);
+//     console.log("Message inserted successfully in the message table");
+
+//     //2. Attempt real-time delivery
+//     const receiverSocketId = getReceiverSocketId(receiver_id);
+    
+//     //person is offline
+//     if (!receiverSocketId)
+//       console.log("The receiver is offline so maybe we are unable to read receiverSocketId in saveMessage controller or there is some problem in the controller")
+    
+//     const messageToSend = {
+//       id: messageId,
+//       sender_id,
+//       receiver_id,
+//       message: content,
+//       message_type: "text", //newly added
+//       fileName: null, //newly added
+//       delivered: true,
+//       created_at: new Date().toISOString()
+//     };
+    
+//     const notification = {
+//       sender_id: sender_id,
+//       id: messageId,
+//       message: content,
+//       fileName: null,
+//       created_at: new Date().toISOString(),
+//     }
+
+//     if (receiverSocketId) {
+//       io.to(receiverSocketId).emit("receive_message", messageToSend);
+
+//       //new addition --- notifications
+//       io.to(receiverSocketId).emit("receive_notification", notification);
+      
+//       console.log("Message sent to the receiver successfully from backend as the user is online: ", content);
+//       await pool.query(`UPDATE messages SET delivered = TRUE, delivered_at = CURRENT_TIMESTAMP WHERE receiver_id = ? AND delivered = FALSE`, [receiver_id]);
+//     } // Mark as delivered
+
+//     return res.status(200).send(messageToSend)
+//   } catch (error) {
+//     console.error("Unable to insert message: ", error);
+//     return res.status(500).json({message: 'Failed to save message'});
+//   }
+// };
 
 const getAllUsers = async (req, res) => { 
   const q = decodeURIComponent(req.params?.q);
@@ -433,25 +449,6 @@ const showConversation = async (req, res) => {
     return res.status(400).json({ message: 'Both userId1 and userId2 are required' });
   }
 
-  // const sortedIds = [userId1, userId2].sort();
-  // const redisKey = `messages:${sortedIds[0]}:${sortedIds[1]}`;
-  // const cacheFlagKey = `messages:loaded:${sortedIds[0]}:${sortedIds[1]}`;
-
-  // // Check if cache is fully loaded
-  // const cacheLoaded = await redis.get(cacheFlagKey);
-
-  // //redis caching ---- cache hit
-  // if ( timestamp === undefined || messageId === undefined  ) {
-  //   if (cacheLoaded === "true") {
-  //     console.log("----------------Cache hit------------------------");
-  //     const messages = await redis.lrange(redisKey, 0, -1);
-  //     const parsedMessages = messages.map(msg => JSON.parse(msg));
-  //     console.log("-----------------Message response sent from cache--------------------");
-  //     console.log(parsedMessages);
-  //     return res.status(200).send(parsedMessages);
-  //   }
-  // }
-
   let localConvertedTime = "";
   if (timestamp !== undefined) {
     localConvertedTime = dayjs.utc(timestamp).tz('America/Toronto').format('YYYY-MM-DD HH:mm:ss.SSS'); // converting utc time to local time for database operations (date comparisons)
@@ -491,17 +488,6 @@ const showConversation = async (req, res) => {
   try {
     const [messages] = await pool.query(query, params);
     console.log("Response sent by showConversation: ", messages);
-    
-    // cache only latest messages ---- cache miss
-    // if (timestamp === undefined || messageId === undefined) {
-    //   await redis.del(redisKey);
-    //   const msgReversed = [...messages].reverse();
-    //   for (const msg of msgReversed) {  // this is because lpush inserts at the head, and not at the tail.
-    //     await redis.lpush(redisKey, JSON.stringify(msg));
-    //   }
-    // }
-    // //redis flag key set to true
-    // await redis.set(cacheFlagKey, "true");
     
     res.status(200).send(messages);
 

@@ -5,10 +5,14 @@ import checkTables from "./utils/SQLTableCreation.js";
 import socketAuth from "./middlewares/verifySocketConnection.middleware.js";
 import connectUser from "./socket/connectUser.js";
 import sequelize from "./db/sequelize.js";
-import redis from "./db/redisClient.js";
+
+import { createKafkaTopic, startMessageConsumer } from "./services/kafka.js";
+import startSubscriber from "./socket/subscribe.js";
+
+import { redis, sub } from "./db/redisClient.js";
 import { Server } from "socket.io"
 import { app } from "./app.js";
-
+ 
 dotenv.config({
   path: "./env",
 });
@@ -31,14 +35,18 @@ const checkDatabaseConnection = async () => {
     console.log("Successfully Connected to ChatBlizz Database");
     //redis
     await redis.ping();
-    console.log("Redis ping successful!!")
+    console.log("Redis ping successful!!");
   } catch (error) {
     console.error("Unable to connect to the DB:", error);
     process.exit(1);
   }
 };
 
+await createKafkaTopic();
+await startMessageConsumer();
+
 const server = http.createServer(app);
+
 const io = new Server(server, {
   cors: {
     origin: "http://localhost:5173",
@@ -50,28 +58,49 @@ const io = new Server(server, {
 const userSocketMap = {} // {userId: socketId}
 
 const getReceiverSocketId = (userId) => {
-  return userSocketMap[userId]
+  return userSocketMap[userId];
+}
+
+const setSocketId = (userId, socketId) => {
+  userSocketMap[userId] = socketId;
+}
+
+const deleteSocketId = (userId) => {
+  delete userSocketMap[userId];
 }
 
 io.use(socketAuth);
 io.on("connection", connectUser);
 
-sequelize
-  .authenticate()
-  .then(async () => {
-    console.log("Connection has been established successfully with sequelize");
-    await checkTables();
-    server.listen(PORT, () => {
-      console.log(`Server is running at port: ${PORT}`);
-    });
-  })
-  .catch((error) => {
-    console.log("Failed to form connection with MySQL database", error);
-    process.exit(1);
+await startSubscriber();
+
+await checkDatabaseConnection().then(async () => {
+  console.log("Connection has been established successfully with sequelize");
+  await checkTables();
+  server.listen(PORT, () => {
+    console.log(`Server is running at port: ${PORT}`);
   });
+}).catch((error) => {
+  console.log("Failed to form connection with MySQL database", error);
+  process.exit(1);
+});
 
-await checkDatabaseConnection()
+await checkDatabaseConnection();
 
-export { pool, io, getReceiverSocketId, userSocketMap }
+export { pool, io, getReceiverSocketId, setSocketId, deleteSocketId };
 
 
+
+// sequelize
+//   .authenticate()
+//   .then(async () => {
+//     console.log("Connection has been established successfully with sequelize");
+//     await checkTables();
+//     server.listen(PORT, () => {
+//       console.log(`Server is running at port: ${PORT}`);
+//     });
+//   })
+//   .catch((error) => {
+//     console.log("Failed to form connection with MySQL database", error);
+//     process.exit(1);
+//   });
