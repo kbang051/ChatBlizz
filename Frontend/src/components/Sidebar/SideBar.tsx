@@ -50,7 +50,7 @@ const SideBar: React.FC<SideBarProps> = ({ isOpen, onClose }) => {
                             <li
                               key={user.id}
                               onClick={() => {
-                                setSelectedUser(user.id);
+                                setSelectedUser(user.id, user.username);
                                 filterUnreadMessage(user.id);
                               }}
                               className="flex justify-between items-center px-3 py-2 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors"

@@ -68,7 +68,7 @@ const SearchAllUsers = () => {
                                     {item.status === "accepted" && 
                                         <button 
                                             className='bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-3 rounded cursor-pointer'
-                                            onClick={() => setSelectedUser(item.id)} // open chatMessage area for the selected user
+                                            onClick={() => setSelectedUser(item.id, item.username)} // open chatMessage area for the selected user
                                         > 
                                             Message 
                                         </button>}

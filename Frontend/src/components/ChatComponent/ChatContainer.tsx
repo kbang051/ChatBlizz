@@ -12,7 +12,8 @@ const ChatContainer = () => {
     scrolledMessages,
     viewMessageOnScroll,
     isMessagesLoading,
-    selectedUser,
+    selectedUser, // main attribute and it is basically the id, if any bug arises in future, look for selectedUser instead of username
+    username,
     subscribeToMessages,
     unsubscribeFromMessages,
     sendMessage,
@@ -96,14 +97,14 @@ const ChatContainer = () => {
         className="p-4 border-b text-amber-50"
         style={{ backgroundColor: "#202C33" }}
       >
-        <h2 className="text-lg hover:cursor-pointer">{selectedUser}</h2>
+        <h2 className="text-lg hover:cursor-pointer">{username}</h2>
       </div>
       
       {/* Chat Component */}
       {/* Messages Area */}
       {openChat && !openFileUploadSection && (
         <>
-          <div className="flex-1 p-4 bg-gray-950 overflow-y-auto">
+          <div className="flex-1 p-4 bg-gray-950 overflow-y-auto ">
               <div className="flex flex-col">
                 {Object.entries(groupedMessages).reverse().map(([date, dateMessages], groupIndex) => (
                   <React.Fragment key={date}>

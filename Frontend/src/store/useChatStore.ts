@@ -52,7 +52,8 @@ interface ChatState {
     getUsers: () => Promise<void>,
     setUsers: (id: string, username: string, email: string) => void;
     selectedUser: string | null,
-    setSelectedUser: (searchId: string) => void,
+    username: string | null,
+    setSelectedUser: (searchId: string, username?: string) => void,
     isUsersLoading: boolean,
     isMessagesLoading: boolean, 
     openChat: boolean,
@@ -75,6 +76,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     scrolledMessages: [],
     users: [],
     selectedUser: null,
+    username: null,
     isUsersLoading: false,
     isMessagesLoading: false,
     openChat: false, // This state can be used to control the visibility of the chat interface and friend requests
@@ -197,11 +199,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
         set({messages: [...newMessage, ...get().messages]});
     },
 
-    setSelectedUser: (searchId: string) => {
+    setSelectedUser: (searchId: string, username?: string) => {
         //visit HomePage.tsx for more clarity related to component state rendering
         useUserSearchStore.getState().setSearchAllProfilesFalse();
         set({ 
             selectedUser: searchId,
+            username: username,
             openChat: true,   
             openFileUploadSection: false,       
             messages: []             
