@@ -80,12 +80,13 @@ await checkDatabaseConnection().then(async () => {
   server.listen(PORT, () => {
     console.log(`Server is running at port: ${PORT}`);
   });
+  console.log("chechTables working successfully.")
 }).catch((error) => {
   console.log("Failed to form connection with MySQL database", error);
   process.exit(1);
 });
 
-await checkDatabaseConnection();
+// await checkDatabaseConnection();
 
 export { pool, io, getReceiverSocketId, setSocketId, deleteSocketId };
 

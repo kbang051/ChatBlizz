@@ -2,7 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { fileTypeFromBuffer } from 'file-type';
 import { pool, io, getReceiverSocketId } from "../index.js";
 import { uploadToS3 } from '../utils/s3Upload.js';
-import { redis } from './redisClient.js';
+import { redis, pub } from './redisClient.js';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc.js';
 import timezone from 'dayjs/plugin/timezone.js';
@@ -10,27 +10,16 @@ import timezone from 'dayjs/plugin/timezone.js';
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
-const fileUpload = async (req, res) => {
-  console.log("Request received in fileUpload");
-  const files = req.files;
-  const { receiver_id, sender_id } = req.body;
-  if (!files || !sender_id || !receiver_id) {
-    console.log("File or sender_id or receiver_id is missing:", `files - ${files}`, `sender_id - ${sender_id}`, `receiver_id - ${receiver_id}`);
-    return res.status(400).json({ message: "Missing file or sender_id or receiver_id" });
-  }
-  const FileTableQuery = `INSERT INTO file (id, user_id, receiver_id, file_name, file_url, uploaded_at) 
-                          VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`;
 
-  const MessageTableQuery = `INSERT INTO messages (id, sender_id, receiver_id, file_id, message, fileName, message_type, created_at) 
-                             VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`;
+const fileUpload = async (req, res) => {
   try {
-    //     Frontend sends a form-data POST request with a file under file.
-    //     multer.memoryStorage() stores that file in RAM.
-    //     req.file holds:
-    //     Metadata like originalname, mimetype, size
-    //     The actual file in buffer
-    //     You send buffer to AWS S3 using the AWS SDK.
-    //     You get a public URL or object key from S3 in return.
+    const files = req.files;
+    const { receiver_id, sender_id } = req.body;
+
+    if (!files || !sender_id || !receiver_id) {
+      console.log("Missing data:", files, sender_id, receiver_id);
+      return res.status(400).json({ message: "Missing file or sender_id or receiver_id" });
+    }
 
     const messages = await Promise.all(
       files.map(async (file) => {
@@ -39,61 +28,122 @@ const fileUpload = async (req, res) => {
           return res.status(400).json({ message: "Unsupported or unknown file type" });
 
         const fileUrl = await uploadToS3(file.buffer, fileType.mime, fileType.ext);
-        // console.log("File URL: ", fileUrl);
 
-        const fileId = uuidv4();
         const messageId = uuidv4();
+        const fileId = uuidv4();
 
-        await pool.query(FileTableQuery, [fileId, sender_id, receiver_id, file.originalname, fileUrl]);
-        //console.log("File inserted successfully in the file table");
-
-        await pool.query(MessageTableQuery, [ messageId, sender_id, receiver_id, fileId, fileUrl, file.originalname, "file"]);
-        //console.log("Message successfully inserted in the message table");
-
-        const messageToSend = {
+        const messageToPublish = {
           id: messageId,
           sender_id,
           receiver_id,
           message: fileUrl,
-          message_type: "file",
           fileName: file.originalname,
-          delivered: true,
+          message_type: "file",
+          fileId,
+          fileUrl,
+          originalname: file.originalname,
           created_at: new Date().toISOString(),
+          delivered: false
         };
 
-        const notification = {
-          sender_id: sender_id,
-          id: messageId,
-          message: fileUrl,
-          fileName: file.originalname,
-          created_at: new Date().toISOString(),
-        }
+        await pub.publish("MESSAGES", JSON.stringify(messageToPublish));
 
-        const receiverSocketId = getReceiverSocketId(receiver_id);
-
-        if (receiverSocketId) {
-          io.to(receiverSocketId).emit("receive_message", messageToSend);
-          
-          //new addition --- notifications
-          io.to(receiverSocketId).emit("receive_notification", notification);
-
-          await pool.query(`UPDATE messages SET delivered = TRUE, delivered_at = CURRENT_TIMESTAMP WHERE receiver_id = ? AND delivered = FALSE`, [receiver_id]);
-        } // Mark as delivered
-
-        return messageToSend;
+        return messageToPublish;
       })
     );
 
     return res.status(200).json({ messages });
   } catch (error) {
-    console.error("Failed to upload or save file: ", error);
-    return res.status(500).json({ message: "Failed to upload or save file" });
+    console.error("File upload error:", error);
+    return res.status(500).json({ message: "Internal Server Error" });
   }
 };
+
+// const fileUpload = async (req, res) => {
+//   console.log("Request received in fileUpload");
+//   const files = req.files;
+//   const { receiver_id, sender_id } = req.body;
+//   if (!files || !sender_id || !receiver_id) {
+//     console.log("File or sender_id or receiver_id is missing:", `files - ${files}`, `sender_id - ${sender_id}`, `receiver_id - ${receiver_id}`);
+//     return res.status(400).json({ message: "Missing file or sender_id or receiver_id" });
+//   }
+//   const FileTableQuery = `INSERT INTO file (id, user_id, receiver_id, file_name, file_url, uploaded_at) 
+//                           VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`;
+
+//   const MessageTableQuery = `INSERT INTO messages (id, sender_id, receiver_id, file_id, message, fileName, message_type, created_at) 
+//                              VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`;
+//   try {
+//     //     Frontend sends a form-data POST request with a file under file.
+//     //     multer.memoryStorage() stores that file in RAM.
+//     //     req.file holds:
+//     //     Metadata like originalname, mimetype, size
+//     //     The actual file in buffer
+//     //     You send buffer to AWS S3 using the AWS SDK.
+//     //     You get a public URL or object key from S3 in return.
+
+//     const messages = await Promise.all(
+//       files.map(async (file) => {
+//         const fileType = await fileTypeFromBuffer(file.buffer);
+//         if (!fileType)
+//           return res.status(400).json({ message: "Unsupported or unknown file type" });
+
+//         const fileUrl = await uploadToS3(file.buffer, fileType.mime, fileType.ext);
+//         // console.log("File URL: ", fileUrl);
+
+//         const fileId = uuidv4();
+//         const messageId = uuidv4();
+
+//         await pool.query(FileTableQuery, [fileId, sender_id, receiver_id, file.originalname, fileUrl]);
+//         //console.log("File inserted successfully in the file table");
+
+//         await pool.query(MessageTableQuery, [ messageId, sender_id, receiver_id, fileId, fileUrl, file.originalname, "file"]);
+//         //console.log("Message successfully inserted in the message table");
+
+//         const messageToSend = {
+//           id: messageId,
+//           sender_id,
+//           receiver_id,
+//           message: fileUrl,
+//           message_type: "file",
+//           fileName: file.originalname,
+//           delivered: true,
+//           created_at: new Date().toISOString(),
+//         };
+
+//         const notification = {
+//           sender_id: sender_id,
+//           id: messageId,
+//           message: fileUrl,
+//           fileName: file.originalname,
+//           created_at: new Date().toISOString(),
+//         }
+
+//         const receiverSocketId = getReceiverSocketId(receiver_id);
+
+//         if (receiverSocketId) {
+//           io.to(receiverSocketId).emit("receive_message", messageToSend);
+          
+//           //new addition --- notifications
+//           io.to(receiverSocketId).emit("receive_notification", notification);
+
+//           await pool.query(`UPDATE messages SET delivered = TRUE, delivered_at = CURRENT_TIMESTAMP WHERE receiver_id = ? AND delivered = FALSE`, [receiver_id]);
+//         } // Mark as delivered
+
+//         return messageToSend;
+//       })
+//     );
+
+//     return res.status(200).json({ messages });
+//   } catch (error) {
+//     console.error("Failed to upload or save file: ", error);
+//     return res.status(500).json({ message: "Failed to upload or save file" });
+//   }
+// };
 
 const saveMessage = async (req, res) => {
   try {
     const { sender_id, receiver_id, content } = req.body;
+    console.log("Request received at saveMessage: sender_id: ", sender_id, " receiver_id: ", receiver_id, " content: ", content);
     if (!sender_id || !receiver_id || !content || content.trim() === "") {
       console.log(`sender_id or receiver_id or content is missing --- sender_id: ${sender_id}, receiver_id: ${receiver_id}, content: ${content}`);
       return res.status(400).json({message: `sender_id or receiver_id or content is missing --- sender_id: ${sender_id}, receiver_id: ${receiver_id}, content: ${content}`});
@@ -111,8 +161,9 @@ const saveMessage = async (req, res) => {
       delivered: false,
       created_at: new Date().toISOString()
     };
-    await redis.publish("MESSAGES", JSON.stringify(messagePayload));
-    return res.status(200).json({ message: "Message published successfully" });
+    await pub.publish("MESSAGES", JSON.stringify(messagePayload));
+    return res.status(200).send(messagePayload);
+    //return res.status(200).json({ message: "Message published successfully" });
   } catch (error) {
     console.error("Failed to publish message: ", error);
     return res.status(500).json({message: 'Failed to save message'});
