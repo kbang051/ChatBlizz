@@ -86,7 +86,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         set({ isUsersLoading: true });
         try {
             if (!userId) throw new Error("User ID is null or undefined");
-            const response = await axios.get(`http://localhost:8000/api/v1/users/getAllUsers/${encodeURIComponent(userId)}`,
+            const response = await axios.get(`${import.meta.env.VITE_BASE_URL}/users/getAllUsers/${encodeURIComponent(userId)}`,
               {headers: { Authorization: `Bearer ${authenticationToken}` }}
             );
             set({ users: response.data});
@@ -116,7 +116,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
                 return;
             }
             const response = await axios.get(
-              `http://localhost:8000/api/v1/users/showConversation`,
+              `${import.meta.env.VITE_BASE_URL}/users/showConversation`,
               { 
                 headers: { Authorization: `Bearer ${authenticationToken}` },
                 params: { userId1: userId, userId2: searchId, timestamp: timestamp } 
@@ -138,7 +138,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
             if (userId === null || userId === undefined || userId === "") {
                 return false;
             }
-            const res = await axios.get('http://localhost:8000/api/v1/users/getUnreadMessages', {
+            const res = await axios.get(`${import.meta.env.VITE_BASE_URL}/users/getUnreadMessages`, {
                 headers: { Authorization: `Bearer ${authenticationToken}`},
                 params: { userId: userId }
             })
@@ -175,7 +175,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
                 return;
             }
             const response = await axios.get(
-                `http://localhost:8000/api/v1/users/showConversation`,
+                `${import.meta.env.VITE_BASE_URL}/users/showConversation`,
                 { 
                   headers: { Authorization: `Bearer ${authenticationToken}` },
                   params: { userId1: userId, userId2: searchId, timestamp: timestamp, messageId: messageId } 
@@ -230,7 +230,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         if (!userId || !selectedUser || content.trim() === "" || !content)
             return;
         try {
-            const response = await axios.post("http://localhost:8000/api/v1/users/saveMessage",
+            const response = await axios.post(`${import.meta.env.VITE_BASE_URL}/users/saveMessage`,
               {
                 sender_id: userId,
                 receiver_id: selectedUser,

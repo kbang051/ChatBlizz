@@ -51,7 +51,7 @@ const HeaderBar: React.FC<HeaderBarProps> = ({ onMenuClick, searchQuery, onSearc
         if (searchQuery) {
           await axios
             .get(
-              `http://localhost:8000/api/v1/users/fetchRecommendation/${encodeURIComponent(searchQuery || "")}`,
+              `${import.meta.env.VITE_BASE_URL}/users/fetchRecommendation/${encodeURIComponent(searchQuery || "")}`,
               { headers: { Authorization: `Bearer ${authenticationToken}` } }
             )
             .then((res) => setSuggestions(res.data))

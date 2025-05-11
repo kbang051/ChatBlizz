@@ -54,7 +54,7 @@ const SearchAllUsers = () => {
                                         <button 
                                             className='bg-blue-700 hover:bg-blue-800 text-white font-semibold py-2 px-3 rounded cursor-pointer'
                                             onClick={async () => {
-                                                await axios.post("http://localhost:8000/api/v1/users/acceptFriendRequest", 
+                                                await axios.post(`${import.meta.env.VITE_BASE_URL}/users/acceptFriendRequest`, 
                                                 { user_id: userId, friend_id: item.id },
                                                 { headers: {Authorization: `Bearer ${authenticationToken}`}}
                                             ).then(() => {

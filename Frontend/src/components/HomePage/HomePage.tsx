@@ -13,6 +13,7 @@ const HomePage = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const { userId } = useAuthStore();
+ 
   const {
     getUsers,
     openChat,
@@ -21,7 +22,9 @@ const HomePage = () => {
     getUnreadMessages,
     setUnreadInitializedTrue,
   } = useChatStore();
+  
   const { searchAllProfiles } = useUserSearchStore();
+  
   //Load friend list on mount 
   useEffect(() => {
     getUsers()

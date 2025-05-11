@@ -34,7 +34,7 @@ const FileUploadComponent = () => {
       console.log("Uploading files:", files.map((f) => f.file.name).join(", "));
       // Make a single request with all files
       const response = await axios.post(
-        "http://localhost:8000/api/v1/users/fileUpload",
+        `${import.meta.env.VITE_BASE_URL}/users/fileUpload`,
         formData,
         {
           headers: { 

@@ -27,7 +27,7 @@ const useInfiniteMessages = (userId1: string, userId2: string, searchId?: string
     setLoading(true);
     try {
       console.log("📡 Request sent to the backend to fetch conversations");
-      const res = await axios.get("http://localhost:8000/api/v1/users/showConversation", { 
+      const res = await axios.get(`${import.meta.env.VITE_BASE_URL}/users/showConversation`, { 
         params: { userId1, userId2, cursor, limit: 20 }
       });
       const newMessages = res.data;

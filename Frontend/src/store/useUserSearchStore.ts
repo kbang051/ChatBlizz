@@ -49,12 +49,11 @@ export const useUserSearchStore = create<UserSearchProps>((set, get) => ({
     if (searchQuery) {
       await axios
         .get(
-          `http://localhost:8000/api/v1/users/fetchSearchAll/${encodeURIComponent(
+          `${import.meta.env.VITE_BASE_URL}/users/fetchSearchAll/${encodeURIComponent(
             searchQuery || ""
           )}`,
           {
             headers: { Authorization: `Bearer ${authenticationToken}` },
-            //params: { limit: -1 },
           }
         )
         .then((res) => {
@@ -76,7 +75,7 @@ export const useUserSearchStore = create<UserSearchProps>((set, get) => ({
     if (userSearchId) {
       await axios
         .post(
-          `http://localhost:8000/api/v1/users/sendFriendRequest`,
+          `${import.meta.env.VITE_BASE_URL}/users/sendFriendRequest`,
           { user_id: userId, friend_id: userSearchId },
           { headers: { Authorization: `Bearer ${authenticationToken}` } }
         )

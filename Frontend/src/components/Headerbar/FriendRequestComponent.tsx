@@ -21,7 +21,7 @@ const FriendRequestComponent: React.FC = () => {
     const fetchFriendRequests = async () => {
       try {
         const res = await axios.get(
-          `http://localhost:8000/api/v1/users/displayFriendRequests/${userId}`,
+          `${import.meta.env.VITE_BASE_URL}/users/displayFriendRequests/${userId}`,
           { headers: { Authorization: `Bearer ${authenticationToken}` } }
         );
         setFriendRequests(res.data);
@@ -59,7 +59,7 @@ const FriendRequestComponent: React.FC = () => {
                   console.log(`Ids sent to backend to acceptRequest ----------- user_id: ${userId}, friend_id: ${req.user_id}`);
                   await axios
                     .post(
-                      "http://localhost:8000/api/v1/users/acceptFriendRequest",
+                      `${import.meta.env.VITE_BASE_URL}/users/acceptFriendRequest`,
                       { user_id: userId, friend_id: req.user_id },
                       { headers: {Authorization: `Bearer ${authenticationToken}`}}
                     )
