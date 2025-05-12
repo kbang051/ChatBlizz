@@ -1,142 +1,176 @@
-## **Overview**
+## **Project Architecture**
 
-The backend of ChatBlizz is designed to handle real-time messaging, user management, and file uploads efficiently. It leverages modern technologies like **Redis**, **Kafka**, **MySQL**, and **Socket.IO** to ensure scalability, reliability, and low latency.
+### **Frontend**
+The frontend is built using **React**, **TypeScript**, and **Vite** for fast development and performance. It provides a responsive user interface for chat functionalities, file uploads, and user management.
+
+#### Key Features:
+- **Real-Time Messaging**: Powered by WebSocket communication.
+- **File Uploads**: Users can upload and share files.
+- **Search Functionality**: Search for users and conversations.
+- **State Management**: Zustand is used for managing application state.
+
+#### Folder Structure:
+```
+Frontend/
+├── public/                # Static assets
+├── src/
+│   ├── components/        # React components (e.g., ChatContainer, HomePage)
+│   ├── store/             # Zustand stores for state management
+│   ├── App.tsx            # Main application component
+│   ├── main.tsx           # Entry point
+│   ├── firebase.ts        # Firebase configuration
+│   ├── index.css          # Global styles
+├── vite.config.ts         # Vite configuration
+├── package.json           # Dependencies and scripts
+```
 
 ---
 
-## **Key Components**
+### **Backend**
+The backend is built using **Node.js** and **Express**. It handles real-time communication, file uploads, and database interactions. The backend is designed to be scalable and efficient using technologies like **Redis**, **Kafka**, and **MySQL**.
 
-### 1. **Database (MySQL)**
-- **Purpose**: Stores persistent data such as user information, messages, files, and friendships.
+#### Key Features:
+- **Real-Time Communication**: Socket.IO for WebSocket-based messaging.
+- **Message Queue**: Kafka for asynchronous message processing.
+- **Caching and Pub/Sub**: Redis for caching and real-time message broadcasting.
+- **File Uploads**: AWS S3 for secure file storage.
+- **Authentication**: Firebase Authentication for user verification.
+
+#### Folder Structure:
+```
+Backend/
+├── src/
+│   ├── app.js             # Express app setup
+│   ├── index.js           # Entry point
+│   ├── controllers/       # API controllers
+│   ├── db/                # Database and Redis setup
+│   ├── middlewares/       # Middleware functions
+│   ├── models/            # Sequelize models
+│   ├── routes/            # API routes
+│   ├── services/          # Kafka producer/consumer
+│   ├── socket/            # Socket.IO setup and Redis subscriber
+│   ├── utils/             # Utility functions (e.g., S3 upload)
+├── package.json           # Dependencies and scripts
+```
+
+---
+
+## **Backend Architecture**
+
+### **1. Database (MySQL)**
+- **Purpose**: Stores persistent data such as users, messages, and files.
 - **Tables**:
-  - `users`: Stores user details like `id`, `username`, `email`, `status`, etc.
-  - `messages`: Stores chat messages, including `sender_id`, `receiver_id`, `message`, `message_type`, and timestamps.
+  - `users`: Stores user details like `id`, `username`, `email`, and `status`.
+  - `messages`: Stores chat messages with fields like `sender_id`, `receiver_id`, `message`, `message_type`, and timestamps.
   - `file`: Stores metadata for uploaded files, such as `file_name`, `file_url`, and `file_type`.
-  - `friends`: Tracks friendships between users with statuses like `pending`, `accepted`, or `rejected`.
-
-- **ORM**: Sequelize is used for defining models and interacting with the database.
+  - `friends`: Tracks friendships between users.
 
 ---
 
-### 2. **Redis**
-- **Purpose**: Acts as a caching layer and message broker for real-time communication.
+### **2. Redis**
+- **Purpose**: Acts as a caching layer and message broker.
 - **Usage**:
-  - **Pub/Sub**: Redis is used to publish and subscribe to messages in real-time. For example, when a user sends a message, it is published to the `MESSAGES` channel, and subscribers (like the backend) process it.
-  - **Caching**: Stores temporary data like pending friend requests and socket mappings for quick access.
+  - **Pub/Sub**: Used for real-time message broadcasting.
+  - **Caching**: Stores temporary data like socket mappings.
 
 ---
 
-### 3. **Kafka**
-- **Purpose**: Handles asynchronous message processing and ensures reliable delivery of messages.
+### **3. Kafka**
+- **Purpose**: Handles asynchronous message processing.
 - **Usage**:
-  - **Producer**: Messages are published to the `MESSAGES` topic in Kafka for further processing.
-  - **Consumer**: A Kafka consumer listens to the `MESSAGES` topic and processes messages, such as saving them to the database or delivering them to the intended recipient.
+  - **Producer**: Publishes messages to the `MESSAGES` topic.
+  - **Consumer**: Processes messages from the `MESSAGES` topic and saves them to the database.
 
 ---
 
-### 4. **Socket.IO**
-- **Purpose**: Enables real-time, bidirectional communication between the server and clients.
+### **4. Socket.IO**
+- **Purpose**: Enables real-time communication between the server and clients.
 - **Usage**:
-  - **User Connections**: Each user is assigned a unique `socketId` when they connect. This is mapped to their `userId` for message delivery.
-  - **Real-Time Messaging**: Messages are sent and received in real-time using events like `receive_message` and `receive_notification`.
+  - **User Connections**: Maps `userId` to `socketId` for message delivery.
+  - **Events**: Handles events like `receive_message` and `receive_notification`.
 
 ---
 
-### 5. **File Uploads**
-- **Purpose**: Handles file uploads (e.g., images, videos, documents) and stores them in AWS S3.
+### **5. File Uploads**
+- **Purpose**: Handles file uploads and stores them in AWS S3.
 - **Workflow**:
   1. Files are uploaded via a POST request.
-  2. The file is stored in AWS S3 using the `@aws-sdk/client-s3` library.
-  3. The file URL is saved in the database for future reference.
+  2. The file is stored in AWS S3.
+  3. The file URL is saved in the database.
 
 ---
 
-### 6. **Authentication**
+### **6. Authentication**
 - **Firebase Authentication**:
-  - Users are authenticated using Firebase tokens.
-  - Middleware (verifySocketConnection.middleware.js) verifies the token during socket connections.
+  - Verifies users using Firebase tokens.
+  - Middleware ensures secure socket connections.
 
 ---
 
-## **Workflow**
+## **Frontend Architecture**
 
-### **Message Flow**
-1. **User Sends a Message**:
-   - The message is sent to the backend via a REST API or WebSocket event.
-   - The message is published to the `MESSAGES` Redis channel.
-
-2. **Redis Subscriber**:
-   - The backend subscribes to the `MESSAGES` channel.
-   - When a message is received, it is processed and delivered to the recipient via Socket.IO.
-
-3. **Kafka**:
-   - The message is also published to the Kafka `MESSAGES` topic for asynchronous processing.
-   - A Kafka consumer listens to the topic and saves the message to the database.
-
-4. **Message Delivery**:
-   - If the recipient is online, the message is delivered in real-time via Socket.IO.
-   - If the recipient is offline, the message is marked as undelivered and stored in the database.
+### **1. React Components**
+- **HomePage**: Main dashboard for users.
+- **ChatContainer**: Displays messages and handles real-time chat.
+- **SearchAllUsers**: Allows users to search for other users.
 
 ---
 
-### **Friendship Management**
-1. **Send Friend Request**:
-   - A user sends a friend request via the `sendFriendRequest` API.
-   - The request is stored in the `friends` table with a `pending` status.
-
-2. **Accept Friend Request**:
-   - The recipient accepts the request via the `acceptFriendRequest` API.
-   - The status in the `friends` table is updated to `accepted`.
+### **2. Zustand State Management**
+- **Stores**:
+  - `useChatStore`: Manages chat-related state (e.g., messages, notifications).
+  - `useAuthStore`: Manages authentication state.
+  - `useUserSearchStore`: Manages user search state.
 
 ---
 
-### **File Upload Workflow**
-1. The user uploads a file via the `fileUpload` API.
-2. The file is stored in AWS S3, and its metadata (e.g., URL, name) is saved in the database.
-3. The file URL is sent to the recipient as part of the message.
+### **3. Firebase Integration**
+- **Purpose**: Handles user authentication.
+- **Configuration**: Firebase SDK is initialized in `firebase.ts`.
 
 ---
 
-## **Folder Structure**
+## **How Components Interact**
 
-```
-src/
-├── app.js                 # Express app setup
-├── index.js               # Entry point
-├── controllers/           # API controllers
-├── db/
-│   ├── queries.js         # Database queries
-│   ├── redisClient.js     # Redis setup
-│   ├── sequelize.js       # Sequelize setup
-├── middlewares/           # Middleware functions
-├── models/                # Sequelize models
-├── routes/                # API routes
-├── services/
-│   ├── kafka.js           # Kafka producer/consumer
-├── socket/
-│   ├── subscribe.js       # Redis subscriber
-│   ├── connectUser.js     # Socket.IO user connection handling
-├── utils/
-│   ├── s3Upload.js        # AWS S3 file upload utility
-```
+1. **User Authentication**:
+   - Users log in via Firebase.
+   - The backend verifies Firebase tokens for secure communication.
+
+2. **Real-Time Messaging**:
+   - Messages are sent via Socket.IO.
+   - Redis broadcasts messages to subscribers.
+   - Kafka ensures reliable message delivery.
+
+3. **File Sharing**:
+   - Files are uploaded to AWS S3.
+   - The file URL is sent as part of the message.
+
+4. **Search Functionality**:
+   - Users can search for other users or conversations.
+   - The backend queries the database for matching results.
 
 ---
 
 ## **Instructions to Run the Project**
 
-### 1. **Clone the Repository**
+### **1. Clone the Repository**
 ```bash
 git clone <repository-url>
-cd ChatBlizz-Backend
+cd ChatBlizz
 ```
 
-### 2. **Install Dependencies**
+---
+
+### **2. Set Up Backend**
+
+#### **Install Dependencies**
 ```bash
+cd Backend
 npm install
 ```
 
-### 3. **Set Up Environment Variables**
-Create a `.env` file in the root directory and add the following variables:
+#### **Set Up Environment Variables**
+Create a `.env` file in the Backend directory with the following:
 ```
 PORT=8000
 DB_HOST=localhost
@@ -150,33 +184,62 @@ ACCESS_KEY_AWS=your-access-key
 SECRET_KEY_AWS=your-secret-key
 ```
 
-### 4. **Start Redis**
-Ensure Redis is running on `localhost:6379`. You can start Redis using:
+#### **Start Redis**
+Ensure Redis is running:
 ```bash
 redis-server
 ```
 
-### 5. **Start Kafka**
-Ensure Kafka is running locally or on a configured broker. Start Kafka using:
+#### **Start Kafka**
+Start Zookeeper and Kafka:
 ```bash
 zookeeper-server-start.sh config/zookeeper.properties
 kafka-server-start.sh config/server.properties
 ```
 
-### 6. **Run the Backend**
+#### **Run the Backend**
 ```bash
 npm start
 ```
 
-### 7. **Test the APIs**
-Use tools like Postman or cURL to test the APIs. The backend runs on `http://localhost:8000`.
+---
+
+### **3. Set Up Frontend**
+
+#### **Install Dependencies**
+```bash
+cd Frontend
+npm install
+```
+
+#### **Set Up Environment Variables**
+Create a `.env` file in the Frontend directory with the following:
+```
+VITE_FIREBASE_API_KEY=your-firebase-api-key
+VITE_FIREBASE_AUTH_DOMAIN=your-firebase-auth-domain
+VITE_FIREBASE_PROJECT_ID=your-firebase-project-id
+VITE_FIREBASE_STORAGE_BUCKET=your-firebase-storage-bucket
+VITE_FIREBASE_MESSAGING_SENDER_ID=your-firebase-messaging-sender-id
+VITE_FIREBASE_APP_ID=your-firebase-app-id
+```
+
+#### **Run the Frontend**
+```bash
+npm run dev
+```
+
+---
+
+### **4. Access the Application**
+- **Frontend**: Open `http://localhost:5173` in your browser.
+- **Backend**: The backend runs on `http://localhost:8000`.
 
 ---
 
 ## **Key Features**
-- **Real-Time Messaging**: Powered by Redis and Socket.IO.
-- **Scalable Architecture**: Kafka ensures reliable and asynchronous message processing.
-- **File Uploads**: Files are securely stored in AWS S3.
-- **Authentication**: Firebase Authentication for secure user management.
+- Real-time messaging with Socket.IO.
+- Scalable architecture with Redis and Kafka.
+- Secure file uploads to AWS S3.
+- Firebase Authentication for user management.
 
-This architecture ensures a robust and scalable backend for ChatBlizz, capable of handling real-time communication and file sharing efficiently.
+This setup ensures a robust and scalable chat application with real-time capabilities.
